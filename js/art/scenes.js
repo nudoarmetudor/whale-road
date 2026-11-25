@@ -251,8 +251,10 @@ function palisade(c, x0, x1, yfn, hgt, o = {}) {
   const step = o.step || 7;
   for (let x = x0; x < x1; x += step) {
     const y = yfn(x), hh = hgt * (0.92 + c.rng() * 0.16);
-    dk += `M${f1(x)} ${f1(y)}V${f1(y - hh)}l${f1(step / 2)} ${f1(-step * 0.7)}l${f1(step / 2)} ${f1(step * 0.7)}V${f1(yfn(x + step))}Z`;
-    lt += `M${f1(x + (c.sunSide > 0 ? step / 2 : 0))} ${f1(y)}v${f1(-hh)}h${f1(step / 2)}v${f1(hh)}z`;
+    // integer stakes when small: these rows run the width of a town and dominate the file size
+    const g = hgt < 30 ? f0 : f1;
+    dk += `M${g(x)} ${g(y)}V${g(y - hh)}l${g(step / 2)}-${g(step * 0.7)} ${g(step / 2)} ${g(step * 0.7)}V${g(yfn(x + step))}Z`;
+    lt += `M${g(x + (c.sunSide > 0 ? step / 2 : 0))} ${g(y)}v-${g(hh)}h${g(step / 2)}v${g(hh)}z`;
   }
   return `<path d="${dk}" fill="${c.col(col, 0.7, dep)}"/><path d="${lt}" fill="${c.col(col, 1, dep)}" opacity=".55"/><path d="M${f1(x0)} ${f1(yfn(x0) - hgt * 0.35)}${Array.from({ length: Math.ceil((x1 - x0) / 20) + 1 }, (_, i) => `L${f1(Math.min(x1, x0 + i * 20))} ${f1(yfn(Math.min(x1, x0 + i * 20)) - hgt * 0.35)}`).join('')}" stroke="${c.col('#3a2a1a', 0.8, dep)}" stroke-width="2" fill="none"/>`;
 }
@@ -994,7 +996,7 @@ function rampart(c, pts, h, o = {}) { // earth bank with a palisade on top
     s += `<path d="${top}" stroke="${c.pal.winter ? '#ffffff' : c.pal.sun}" stroke-width="3" fill="none" opacity=".4"/>`;
   }
   s += P(top + smooth(pts.map(q => [q[0], q[1] + h * 0.35]).reverse(), 0.4, 'L') + 'Z', c.col(c.pal.winter ? '#f2f5f8' : '#87924c', 1, dep), ' opacity=".7"');
-  if (o.palisade !== false) s += palisade(c, pts[0][0], pts[pts.length - 1][0], x => yAt(pts, x) + 3, o.ph || 22, { depth: dep, step: o.step || 7 });
+  if (o.palisade !== false) s += palisade(c, pts[0][0], pts[pts.length - 1][0], x => yAt(pts, x) + 3, o.ph || 22, { depth: dep, step: o.step || 9 });
   return s;
 }
 function kremlin(c, x0, x1, yfn, h, towers, o = {}) { // log wall with tented towers
@@ -1131,7 +1133,7 @@ function harbourChain(c, x0, x1, y) {
 }
 function stockade(c, x0, x1, y, h = 30, dep = 0) {
   let d = '';
-  for (let x = x0; x < x1; x += 13) d += `M${x} ${y + (c.rng() - 0.5) * 4}v${-h * (0.8 + c.rng() * 0.4)}`;
+  for (let x = x0; x < x1; x += 13) d += `M${f0(x)} ${f0(y + (c.rng() - 0.5) * 4)}v${f0(-h * (0.8 + c.rng() * 0.4))}`;
   return `<path d="${d}" stroke="${c.col('#3a2a1c', 0.8, dep)}" stroke-width="5" stroke-linecap="round"/>`;
 }
 function seaGate(c, x, y, k = 1) { // Jómsborg: fortified harbour gate over the water
@@ -1366,7 +1368,7 @@ PORT_DEFS.kaupang = {
   far: c => {
     let s = sea(c, 420, 540);
     s += hills(c, { pts: [[-20, 446], [220, 420], [460, 440], [700, 424], [940, 452], [1160, 432], [1380, 446], [1620, 428]], base: 560, depth: 0.72, color: '#56703c', mist: 36 });
-    s += forest(c, { x0: 0, x1: 1600, step: 9, hMin: 12, hMax: 22, depth: 0.62, kind: 'mixed', twoTone: false, ground: x => 444 + Math.sin(x / 140) * 9 });
+    s += forest(c, { x0: 0, x1: 1600, step: 12, hMin: 12, hMax: 22, depth: 0.62, kind: 'mixed', twoTone: false, ground: x => 444 + Math.sin(x / 140) * 9 });
     s += hills(c, { pts: [[-20, 500], [260, 480], [620, 496], [980, 486], [1300, 470], [1620, 482]], base: 600, depth: 0.42, color: '#5f7a3a' });
     s += forest(c, { x0: 900, x1: 1620, step: 11, hMin: 30, hMax: 52, depth: 0.36, kind: 'mixed', ground: x => 486 + Math.sin(x / 90) * 6 });
     s += forest(c, { x0: -20, x1: 260, step: 11, hMin: 30, hMax: 50, depth: 0.36, kind: 'mixed', ground: x => 494 });

@@ -441,7 +441,7 @@ export function relPoly(pts, dec = 0) {
 export function spruce(x, y, h, w = h * 0.36) {
   // jagged silhouette; returns [left half, right half, whole outline] as compact paths
   const k = Math.max(2, Math.min(6, Math.round(h / 11)));
-  const dec = h < 40 ? 0 : 1;
+  const dec = h < 90 ? 0 : 1;
   const Lp = [[x, y - h]], Rp = [[x, y - h]];
   for (let i = 1; i <= k; i++) {
     const t = i / k, yy = y - h + h * t * 0.92, ww = w / 2 * (0.25 + t * 0.75);
