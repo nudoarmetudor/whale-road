@@ -339,7 +339,7 @@ button.row-main { min-height: var(--tap); }
 .dock-btn.primary { background: linear-gradient(180deg, #e6be5a, var(--gold) 55%, #9c7420); color: var(--ink); max-width: 160px; flex-grow: 1.4; box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 #5a3e10; }
 .dock-btn.primary.blocked { filter: grayscale(.7); }
 .dock-btn:active { transform: translateY(1px); }
-.hint { position: absolute; z-index: 5; left: 50%; bottom: 70px; transform: translateX(-50%); width: min(420px, calc(100% - 24px)); padding: 12px 14px 10px; animation: sheet-in .25s; box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 2px var(--gold); }
+.hint { position: absolute; z-index: 5; left: 0; right: 0; margin: 0 auto; bottom: 70px; width: min(420px, calc(100% - 24px)); padding: 12px 14px 10px; animation: sheet-in .25s; box-shadow: 0 10px 30px rgba(0,0,0,.5), inset 0 0 0 2px var(--gold); }
 .hint p { margin: 0 0 4px; font-size: 1rem; }
 .hint .btn-row { margin-top: 6px; }
 .hint-count { position: absolute; left: 14px; bottom: 16px; }

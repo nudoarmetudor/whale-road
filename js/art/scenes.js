@@ -805,16 +805,29 @@ export function longship(c, x, y, s = 1, o = {}) {
   g.push(`<path d="M-150 -40Q-140 8 -95 12H95Q140 8 150 -40Q130 -10 95 -12H-95Q-130 -10 -150 -40Z" fill="${c.col(hullC, 0.85, dep)}"/>`);
   g.push(`<path d="M-140 -26Q-110 0 -80 2H80Q110 0 140 -26M-130 -14Q-100 6 -70 7H70Q100 6 130 -14" stroke="${c.col('#1a120a', 1, dep)}" stroke-width="1.6" fill="none" opacity=".6"/>`);
   g.push(`<path d="M-150 -40Q-140 -8 -95 -12H95Q140 -8 150 -40" stroke="${c.col('#7a5a3a', 1.1, dep)}" stroke-width="2.4" fill="none"/>`);
-  // stems: dragon prow, curled stern
-  g.push(`<path d="M150 -40q14 -30 2 -58q-4 -10 -14 -6q8 4 6 12q-10 2 -6 10" stroke="${c.col(hullC, 0.85, dep)}" stroke-width="7" fill="none" stroke-linecap="round"/>`);
-  g.push(`<path d="M-150 -40q-12 -26 -2 -46q6 -8 12 -2q-6 0 -6 8" stroke="${c.col(hullC, 0.85, dep)}" stroke-width="6" fill="none" stroke-linecap="round"/>`);
+  const dromon = o.kind === 'dromon';
+  if (dromon) { // Byzantine galley: bronze spur at the waterline, fan sternpost, a fighting castle forward, painted wale
+    g.push(`<path d="M138 0L184 4L138 10Z" fill="${c.col('#a8782a', 1, dep)}"/><path d="M-150 -40q-4 -22 10 -40q4 6 -2 12q10 -4 12 4q-8 2 -10 10" stroke="${c.col(hullC, 0.85, dep)}" stroke-width="6" fill="none" stroke-linecap="round"/>`);
+    g.push(`<path d="M-140 -30Q-110 -18 -80 -18H80Q110 -18 140 -30" stroke="${c.col('#c9a04a', 1, dep)}" stroke-width="4" fill="none"/>`);
+    g.push(`<path d="M84 -40V-70H134V-40Z" fill="${c.col('#6a3a22', 0.9, dep)}"/><path d="M84 -70h50M88 -70v-6h8v6M104 -70v-6h8v6M120 -70v-6h8v6" stroke="${c.col('#4a2614', 0.9, dep)}" stroke-width="3" fill="none"/><path d="M90 -62h38" stroke="${c.col('#c9a04a', 1, dep)}" stroke-width="2"/>`);
+  } else {
+    // stems: dragon prow, curled stern
+    g.push(`<path d="M150 -40q14 -30 2 -58q-4 -10 -14 -6q8 4 6 12q-10 2 -6 10" stroke="${c.col(hullC, 0.85, dep)}" stroke-width="7" fill="none" stroke-linecap="round"/>`);
+    g.push(`<path d="M-150 -40q-12 -26 -2 -46q6 -8 12 -2q-6 0 -6 8" stroke="${c.col(hullC, 0.85, dep)}" stroke-width="6" fill="none" stroke-linecap="round"/>`);
+  }
   if (o.shields !== false) {
     let sh = '';
     const cols = o.shieldCols || ['#a3302a', '#e8d8b0', '#24467a', '#c9a04a'];
     for (let i = 0; i < 12; i++) { const sx = -100 + i * 18; sh += `<circle cx="${sx}" cy="-14" r="8" fill="${c.col(cols[i % cols.length], 0.95, dep)}" stroke="${c.col('#2a1a10', 1, dep)}" stroke-width="1.2"/><circle cx="${sx}" cy="-14" r="2" fill="${c.col('#c9a04a', 1, dep)}"/>`; }
     g.push(sh);
   }
-  if (o.sail !== 'none') {
+  if (dromon && o.sail !== 'none') { // lateen rig: raked yard and a triangular sail
+    const sc = o.sailCols || ['#7a1f66', '#f2e6c8'];
+    g.push(`<path d="M10 -14V-170" stroke="${c.col('#4a3420', 0.9, dep)}" stroke-width="5"/>`);
+    g.push(`<path d="M-120 -40L134 -206" stroke="${c.col('#4a3420', 0.9, dep)}" stroke-width="4"/>`);
+    g.push(`<path d="M-112 -46L128 -202Q100 -110 70 -40Z" fill="${c.col(sc[1], 0.95, dep)}"/><path d="M-30 -100L50 -152Q36 -96 24 -40H-8Z" fill="${c.col(sc[0], 0.95, dep)}" opacity=".9"/><path d="M-112 -46L128 -202Q100 -110 70 -40Z" fill="${c.url('roofsh')}"/>`);
+    g.push(`<path d="M10 -170L-150 -40M10 -170L150 -40" stroke="${c.col('#2a1a10', 1, dep)}" stroke-width="1" opacity=".5"/>`);
+  } else if (o.sail !== 'none') {
     g.push(`<path d="M0 -14V-190" stroke="${c.col('#4a3420', 0.9, dep)}" stroke-width="5"/><path d="M-60 -170L0 -190L60 -170" stroke="${c.col('#2a1a10', 1, dep)}" stroke-width="1" fill="none" opacity=".6"/>`);
     g.push(`<path d="M0 -190L-150 -42M0 -190L148 -44" stroke="${c.col('#2a1a10', 1, dep)}" stroke-width="1" opacity=".5"/>`);
     const sc = o.sailCols || ['#a3302a', '#efe2c4'];
@@ -830,7 +843,7 @@ export function longship(c, x, y, s = 1, o = {}) {
     }
     if (o.vane) g.push(flagStatic(c, 0, -192, 20, 10, sc[0], dep));
   }
-  if (o.oars) { let od = ''; for (let i = 0; i < 9; i++) od += `M${-80 + i * 20} -6l${-14} 34`; g.push(`<path d="${od}" stroke="${c.col('#8a6a40', 0.9, dep)}" stroke-width="2.4"/>`); }
+  if (o.oars) { let od = ''; const n = dromon ? 13 : 9, sp = dromon ? 15 : 20; for (let i = 0; i < n; i++) { od += `M${-90 + i * sp} -6l${-14} 34`; if (dromon) od += `M${-84 + i * sp} -20l-18 46`; } g.push(`<path d="${od}" stroke="${c.col('#8a6a40', 0.9, dep)}" stroke-width="2.4"/>`); }
   const body = g.join('');
   const tr = `translate(${f1(x)} ${f1(y)}) scale(${f1(s * dir)} ${f1(s)})`;
   return { body, tr, svg: `<g transform="${tr}">${body}</g>` };
@@ -950,10 +963,11 @@ function faroeCliff(c, pts, base, dep) { // steep green slopes, stepped basalt b
   return s;
 }
 function waterfall(c, x, y0, y1, w = 10, dep = 0) {
-  const k = c.pal.night ? 0.45 : 1;
-  const g = vgrad(c, 'wfall', [[0, '#ffffff', 0.55 * k], [0.5, '#e8f2f6', 0.85 * k], [1, '#ffffff', 0.95 * k]]);
+  const k = c.pal.night ? 0.45 : c.pal.dusk ? 0.8 : 1;
+  const wc = c.col('#f4f8fa', 1, dep), wc2 = c.col('#dce8ee', 0.95, dep);
+  const g = vgrad(c, 'wfall', [[0, wc, 0.55 * k], [0.5, wc2, 0.85 * k], [1, wc, 0.95 * k]]);
   let s = `<path d="M${x - w * 0.4} ${y0}C${x - w * 0.6} ${y0 + (y1 - y0) * 0.4} ${x - w * 1.1} ${y1 - 40} ${x - w * 1.6} ${y1}H${x + w * 1.6}C${x + w * 1.1} ${y1 - 40} ${x + w * 0.6} ${y0 + (y1 - y0) * 0.4} ${x + w * 0.4} ${y0}Z" fill="${g}"/>`;
-  s += `<ellipse cx="${x}" cy="${y1 + 2}" rx="${w * 3.4}" ry="${w * 1.1}" fill="#fff" opacity=".45"/><ellipse cx="${x}" cy="${y1 - 6}" rx="${w * 2.2}" ry="${w * 1.6}" fill="#fff" opacity=".3"/>`;
+  s += `<ellipse cx="${x}" cy="${y1 + 2}" rx="${w * 3.4}" ry="${w * 1.1}" fill="${wc}" opacity="${f1(0.45 * k)}"/><ellipse cx="${x}" cy="${y1 - 6}" rx="${w * 2.2}" ry="${w * 1.6}" fill="${wc}" opacity="${f1(0.3 * k)}"/>`;
   if (c.animate) c.anims.push(`<g class="wr-anim-fall" stroke="#fff" fill="none" opacity=".55"><path d="M${x - w * 0.3} ${y0}Q${x - w * 0.5} ${(y0 + y1) / 2} ${x - w} ${y1}" stroke-width="2" stroke-dasharray="18 26"><animate attributeName="stroke-dashoffset" values="0;-88" dur="1.1s" repeatCount="indefinite"/></path><path d="M${x + w * 0.2} ${y0}Q${x + w * 0.3} ${(y0 + y1) / 2} ${x + w * 0.7} ${y1}" stroke-width="1.5" stroke-dasharray="12 30"><animate attributeName="stroke-dashoffset" values="0;-84" dur=".9s" repeatCount="indefinite"/></path></g>`);
   return s;
 }
@@ -977,7 +991,7 @@ function standingStones(c, cx, cy, rx, n, h, dep = 0) {
   return s;
 }
 function steam(c, x, y, s = 1) {
-  if (!c.animate) return `<ellipse cx="${x}" cy="${y - 30 * s}" rx="${20 * s}" ry="${30 * s}" fill="#fff" opacity=".35"/>`;
+  if (!c.animate) return `<g fill="${c.url('puffL')}" opacity=".75"><ellipse cx="${f0(x)}" cy="${f0(y - 14 * s)}" rx="${f0(16 * s)}" ry="${f0(12 * s)}"/><ellipse cx="${f0(x + 6 * s)}" cy="${f0(y - 38 * s)}" rx="${f0(24 * s)}" ry="${f0(18 * s)}"/><ellipse cx="${f0(x + 14 * s)}" cy="${f0(y - 66 * s)}" rx="${f0(30 * s)}" ry="${f0(20 * s)}"/></g>`;
   return smokeAnim(c, x, y, s, { color: '#f4f6f8', drift: 20, dur: 5, puffs: 5 });
 }
 function geyserAnim(c, x, y, s = 1) {
@@ -1312,7 +1326,7 @@ function buildPort(id, o, def) {
   const split = c.anims.length;
   const front = def.front ? def.front(c) : '';
   if (c.pal.winter && def.snowfall !== false) c.anims.push(snowfall(c, 60));
-  c.anims.push(gullsAnim(c, def.gulls ?? 4, def.gullBand || {}));
+  if (!c.pal.night) c.anims.push(gullsAnim(c, def.gulls ?? 4, def.gullBand || {}));
   return assemble(c, { stat, labels: T.labels, front: front + vignette(c, 0.42), split }, o);
 }
 
@@ -1977,7 +1991,7 @@ PORT_DEFS.miklagard = {
   front: c => {
     let s = harbourChain(c, -10, 1610, 790);
     // dromons
-    s += longship(c, 1200, 850, 0.95, { sail: 'set', sailCols: ['#7a1f66', '#f2e6c8'], shields: false, hull: '#5a2a1a', oars: true }).svg;
+    s += longship(c, 1200, 850, 0.95, { kind: 'dromon', sailCols: ['#7a1f66', '#f2e6c8'], shields: false, hull: '#5a2a1a', oars: true }).svg;
     const m = mooredShip(c, 420, 846, 0.85, { sail: 'furled', sailCols: ['#a3302a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
     s += boat(c, 800, 770, 1, { man: true, col: '#7a4a2a' });
     return s;
