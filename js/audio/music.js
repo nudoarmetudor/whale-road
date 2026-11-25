@@ -258,7 +258,7 @@ const THEMES = {
       I: {c: [[0, 8]], l: 'bd'},
       A: {m: '0/1.5 0/0.5 4/2 | 3/1 2/1 3/1 4/1 | 0/1.5 0/0.5 6/1 5/1 | 4/4', c: [[0, 4], [6, 4], [0, 4], [4, 4]]},
       A2: {m: '0/1.5 0/0.5 4/2 | 3/1 2/1 3/1 4/1 | 5/1.5 4/0.5 3/1 2/1 | 0/4', c: [[0, 4], [6, 4], [5, 4], [0, 4]]},
-      B: {m: '7/1 5/1 7/1 9/1 | 8/2 6/2 | 7/1 6/1 4/1 6/1 | 4/2 1/2', c: [[5, 4], [6, 4], [0, 4], [4, 4]], i: ['flute', 'horn'], h: -2, v: 1.08},
+      B: {m: '7/1 5/1 7/1 9/1 | 8/2 6/2 | 7/1 6/1 4/1 6/1 | 4/2 1/2', c: [[5, 4], [6, 4], [0, 4], [4, 4]], i: 'horn', h: -2, v: 1.08},
       D: {c: [[0, 4], [6, 4]], l: 'bdp'},
     },
     form: ['I', 'A', 'A2', 'B', 'A2', 'D'], loopFrom: 1, orn: 0.4,
@@ -268,7 +268,7 @@ const THEMES = {
     bpm: 100, bar: 4, root: 62, mode: 'mixolydian', wet: 0.4, oneShot: true,
     drone: {k: 'gurdy', n: [-24, -17], g: 0.07},
     pad: {k: 'choir', g: 0.12, vowel: 'a', att: 0.4},
-    drums: {p: ['XxxxXxxxXxxxXxxx', 'O...............'], g: 0.4},
+    drums: {p: ['X..xX..xX.xxXxxx', 'O...............'], g: 0.4},
     mel: {i: 'horn', g: 0.4, o: 12},
     sec: {
       A: {m: '0/0.5 0/0.5 4/1 4/0.5 4/0.5 7/1 | 6/0.5 7/0.5 9/1 7/2 | 7/4', c: [[0, 4], [6, 2], [0, 2], [0, 4]], h: -2, l: 'mpd'},
@@ -314,8 +314,8 @@ const MIX = {
   lyre: [1, -0.28, 0.3], harp: [1, -0.22, 0.42], oud: [1, 0.05, 0.3], bass: [1.35, 0, 0.12],
   pad: [1.6, 0, 0.5], drone: [1.9, 0, 0.25], drums: [1, 0.08, 0.16], bell: [1, 0.2, 0.7], amb: [1.8, 0, 0.12],
 };
-const INST_OCT = {flute: 12, kantele: 0, horn: -12, chant: -12, lyre: 0, harp: 0, oud: 0};
-const MEL_LVL = {flute: 0.62, kantele: 1.35, horn: 0.85, chant: 1.4, lyre: 1.35, harp: 1.35, oud: 2.1};
+const INST_OCT = {flute: 12, kantele: 12, horn: -12, chant: -12, lyre: 12, harp: 12, oud: 0};
+const MEL_LVL = {flute: 0.62, kantele: 1.2, horn: 0.85, chant: 1.4, lyre: 1.2, harp: 1.2, oud: 2.1};
 const PLUCKS = new Set(['lyre', 'harp', 'oud', 'kantele', 'bass']);
 
 // ------------------------------------------------------------------ parsing helpers

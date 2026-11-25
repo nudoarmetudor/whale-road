@@ -78,6 +78,12 @@ const sells = (port, good) => {
   return !(p.contraband || []).includes(good) && ([...(p.produces || []), ...(p.trades || [])]).includes(good);
 };
 const hasBuilding = (port, b) => !PD || !PD[port] || PD[port].buildings.includes(b);
+// Can a voyage between two of these ports pass this sea mark? (routes.js, when present)
+const markReachable = (mark, ports) => {
+  if (!routesMod || !routesMod.marksOnPath) return true;
+  const list = [...ports].filter((p) => p !== FORTRESS);
+  return list.some((a) => list.some((b) => a !== b && routesMod.marksOnPath(a, b).includes(mark)));
+};
 
 // ------------------------------------------------------------------ helpers
 function checkLines(where, lines, min, max) {
@@ -275,6 +281,7 @@ test('saga progression: ports, goods and renown open in order', () => {
       for (const s of q.steps) {
         if (s.port) assert.ok(open.has(s.port), `${w}: step port ${s.port} not open yet`);
         if (s.do === 'defeat' && s.at.port && s.at.port !== FORTRESS) assert.ok(open.has(s.at.port), `${w}: battle port not open`);
+        if (s.do === 'defeat' && s.at.sea) assert.ok(markReachable(s.at.sea, open), `${w}: no voyage between open ports passes ${s.at.sea}`);
         if (s.do === 'deliver' || s.do === 'buy') {
           assert.ok(goods.has(s.good), `${w}: good ${s.good} not unlocked yet`);
           const where = s.do === 'buy' && s.port ? [s.port] : [...open];
@@ -297,8 +304,9 @@ test('saga progression: ports, goods and renown open in order', () => {
   }
 });
 
-test('side tasks ask only for goods some market sells', () => {
+test('side tasks ask only for goods some market sells, and fight where ships sail', () => {
   for (const q of SIDE) for (const s of q.steps) {
+    if (s.do === 'defeat' && s.at.sea) assert.ok(markReachable(s.at.sea, PORTS), `${q.id}: no route passes ${s.at.sea}`);
     if (s.do === 'deliver' && s.good !== 'hacksilver') {
       assert.ok(PORTS.some((p) => p !== FORTRESS && sells(p, s.good)), `${q.id}: nobody sells ${s.good}`);
     }

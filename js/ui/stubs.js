@@ -255,8 +255,9 @@ export function makeSim(D, state) {
       const armV = Object.entries(s.arms || {}).reduce((a, [k, n]) => a + n * fleet.armCost(k), 0);
       return Math.round(st.price * 0.6 * (s.hull / st.hull) + armV);
     },
-    buyShip(type) {
+    buyShip(type, tradeIn = null) {
       const st = D.ships[type] || SHIPS[type];
+      if (tradeIn != null) { const r = fleet.sellShip(tradeIn); if (!r.ok) return r; }
       if (S.fleet.length >= 4) return no('Your fleet is full (4 ships)');
       if (st.price > S.silver) return no('Not enough silver');
       S.silver -= st.price;

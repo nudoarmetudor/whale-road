@@ -86,11 +86,16 @@ export async function loadAll() {
   const [scenesM, portraitsM, shipsArtM] = await Promise.all([
     tryImport('../art/scenes.js'), tryImport('../art/portraits.js'), tryImport('../art/ships.js')]);
   const stubArt = S.makeArt(D);
-  A.portScene = scenesM?.portScene || (stubbed.push('art/portScene'), stubArt.portScene);
-  A.titleScene = scenesM?.titleScene || (stubbed.push('art/titleScene'), stubArt.titleScene);
-  A.seaScene = scenesM?.seaScene || stubArt.seaScene;
-  A.portrait = portraitsM?.portrait || (stubbed.push('art/portrait'), stubArt.portrait);
-  A.shipSVG = shipsArtM?.shipSVG || (stubbed.push('art/shipSVG'), S.shipSVG);
+  // A real art function that throws (work in progress) falls back to the stub for that call.
+  const safe = (real, stub, name) => {
+    if (!real) { stubbed.push('art/' + name); return stub; }
+    return (...a) => { try { return real(...a); } catch (err) { console.warn(`[art] ${name} failed, using stand-in:`, err?.message); return stub(...a); } };
+  };
+  A.portScene = safe(scenesM?.portScene, stubArt.portScene, 'portScene');
+  A.titleScene = safe(scenesM?.titleScene, stubArt.titleScene, 'titleScene');
+  A.seaScene = safe(scenesM?.seaScene, stubArt.seaScene, 'seaScene');
+  A.portrait = safe(portraitsM?.portrait, stubArt.portrait, 'portrait');
+  A.shipSVG = safe(shipsArtM?.shipSVG, S.shipSVG, 'shipSVG');
 
   // audio
   const [musicM, sfxM] = await Promise.all([tryImport('../audio/music.js'), tryImport('../audio/sfx.js')]);

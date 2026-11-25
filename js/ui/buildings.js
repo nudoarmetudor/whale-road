@@ -230,20 +230,39 @@ function openRunecarver(port) {
 // ------------------------------------------------------------------ guild
 function openGuild(port) {
   return sheet({title: 'Craft guild', portrait: 'guildmaster', greeting: rnd(['The guild remembers who helps it. And who does not.', 'Smiths, weavers, tanners, all under one leaky roof.']),
-    cls: 'guild', build(body, api) {
-      const donate = G.guild?.donate;
-      if (typeof donate === 'function') {
-        const st = stepper({value: 100, min: 0, max: () => S().silver, label: 'Donation in silver'});
-        add(body, h('section.parch-inset', h('h4', 'Donate'), h('p.small', 'A gift to the guild earns renown, and the masters start offering you their combination work.'),
+    cls: 'guild', wide: true, build(body, api) {
+      const info = G.guild?.guildHere ? read('guild', 'guildHere', null) : null;
+      if (typeof G.guild?.donate === 'function') {
+        const st = stepper({value: Math.min(1000, S().silver), min: 0, max: () => S().silver, label: 'Donation in silver'});
+        add(body, h('section.parch-inset', h('h4', 'Donate'),
+          info ? h('div.guild-standing', h('span', `Standing here: ${silver(info.donated)} given · level ${info.level}`),
+            info.next ? meter(info.donated / info.next, `next level at ${silver(info.next)}`, 'gold') : h('small', 'Highest standing')) : null,
+          h('p.small', 'Every 1 000 s given earns renown, and higher standing opens better recipes.'),
           h('div.inline-form', st.el, h('button.btn.small', {type: 'button', onclick: async () => {
             const n = st.get(); if (!n) return;
             if (result(call('guild', 'donate', n), `Donated ${silver(n)}`, 'coin')) { logLine(`Gave ${silver(n)} to the guild in ${port.name}.`); await runActs(port, 'guild'); flow.refreshHud(); api.refresh(); }
           }}, 'Give'))));
-      } else {
-        add(body, h('p.small', 'The guild takes donations and gives combination work: bring the right goods together and the masters make something better from them.'));
       }
-      add(body, h('h4', 'Guild work'), offersBlock(port, 'guild', api, 'No commissions today.'), h('div.btn-row', reportBtn(port, 'guild', api, 'Deliver or donate for your tasks')));
+      if (info?.recipes?.length) {
+        add(body, h('h4', 'Combination work'), h('ul.rows.recipes', info.recipes.map(r => h('li' + (r.can ? '' : '.dim'),
+          h('div.row-main', h('b', r.name), h('small', r.desc || ''),
+            h('small.needs', 'Bring: ' + Object.entries(r.needs || {}).map(([g, n]) => `${n} ${goodName(g)} (${num(S().cargo?.[g] || 0)})`).join(', ')),
+            h('small', 'Makes: ' + giveText(r.gives)), r.why ? h('small.warn', r.why) : null),
+          h('button.btn.small', {type: 'button', disabled: !r.can, onclick: async () => {
+            if (result(call('guild', 'craft', r.id), `The guild made ${r.name}`, 'quest')) { flow.refreshHud(); api.refresh(); }
+          }}, 'Make')))));
+      }
+      add(body, h('h4', 'Guild tasks'), offersBlock(port, 'guild', api, 'No commissions today.'), h('div.btn-row', reportBtn(port, 'guild', api, 'Deliver or donate for your tasks')));
     }});
+}
+function giveText(g = {}) {
+  const bits = [];
+  for (const [k, n] of Object.entries(g.goods || {})) bits.push(`${n} ${goodName(k)}`);
+  for (const i of g.items || []) bits.push(itemOf(i).name);
+  for (const [b, n] of Object.entries(g.blessings || {})) bits.push(`${n}× ${D.blessings?.[b]?.name || b}`);
+  if (g.renown) bits.push(`${g.renown} renown`);
+  if (g.repair) bits.push(`repairs ${Math.round(g.repair * 100)}% of every hull`);
+  return bits.join(', ') || 'something useful';
 }
 
 // ------------------------------------------------------------------ bank

@@ -42,31 +42,31 @@ function tone(ctx, out, t, {type = 'sine', f, f2, glide = 0.1, peak = 0.4, att =
 /** metallic clink: inharmonic partials (silver coins) */
 function clink(ctx, out, t, f, vel = 1) {
   [[1, 1, 0.09], [2.41, 0.6, 0.06], [3.9, 0.35, 0.045], [6.3, 0.18, 0.03]].forEach(([r, a, d]) =>
-    tone(ctx, out, t, {f: f * r, peak: 0.16 * a * vel, att: 0.0015, dec: d}));
+    tone(ctx, out, t, {f: f * r, peak: 0.16 * a * vel, att: 0.0015, dec: d * (r > 3 ? 0.7 : 1)}));
   burst(ctx, out, t, {type: 'highpass', f: 6000, peak: 0.06 * vel, att: 0.001, dec: 0.006});
 }
 
 const SFX = {
   coin(ctx, o, t) {
-    clink(ctx, o.out, t, 2350, 1);
-    clink(ctx, o.out, t + 0.075, 2620, 0.75);
-    clink(ctx, o.out, t + 0.16, 2480, 0.4);
-    clink(ctx, o.wet, t, 2350, 0.4);
+    clink(ctx, o.out, t, 1980, 1.2);
+    clink(ctx, o.out, t + 0.075, 2230, 0.9);
+    clink(ctx, o.out, t + 0.16, 2100, 0.45);
+    clink(ctx, o.wet, t, 1980, 0.4);
   },
   click(ctx, o, t) { // soft wooden tick
-    burst(ctx, o.out, t, {f: 1500, Q: 4, peak: 0.35, att: 0.001, dec: 0.012});
-    tone(ctx, o.out, t, {type: 'triangle', f: 880, f2: 620, glide: 0.03, peak: 0.12, att: 0.001, dec: 0.015});
+    burst(ctx, o.out, t, {f: 1500, Q: 4, peak: 0.8, att: 0.001, dec: 0.012});
+    tone(ctx, o.out, t, {type: 'triangle', f: 880, f2: 620, glide: 0.03, peak: 0.3, att: 0.001, dec: 0.015});
   },
   page(ctx, o, t) { // parchment turned
     const n = noise(ctx), bp = filt(ctx, 'bandpass', 2200, 0.9), g = ctx.createGain(), am = osc(ctx, 'square', 38), amg = I.gainNode(ctx, 0.05);
     bp.frequency.setValueAtTime(1500, t); bp.frequency.linearRampToValueAtTime(3800, t + 0.28);
-    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.12, t + 0.08); g.gain.linearRampToValueAtTime(0.06, t + 0.2); g.gain.linearRampToValueAtTime(0, t + 0.34);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.24, t + 0.08); g.gain.linearRampToValueAtTime(0.12, t + 0.2); g.gain.linearRampToValueAtTime(0, t + 0.34);
     am.connect(amg); amg.connect(g.gain);
     n.connect(bp); bp.connect(g); g.connect(o.out); nstart(n, t, t + 0.4); am.start(t); am.stop(t + 0.4);
     burst(ctx, o.out, t + 0.3, {f: 900, Q: 1, peak: 0.08, dec: 0.02});
   },
   sail(ctx, o, t) { // canvas fills with wind: whoosh plus two flaps
-    burst(ctx, o.out, t, {kind: 'pink', f: 350, f2: 1300, Q: 1.4, peak: 0.35, att: 0.25, dec: 0.25, len: 0.7});
+    burst(ctx, o.out, t, {kind: 'pink', f: 350, f2: 1300, Q: 1.4, peak: 0.6, att: 0.25, dec: 0.25, len: 0.7});
     [0.32, 0.5].forEach((d, i) => burst(ctx, o.out, t + d, {kind: 'brown', type: 'lowpass', f: 400, peak: 0.55 - i * 0.2, att: 0.004, dec: 0.05}));
     burst(ctx, o.wet, t, {kind: 'pink', f: 600, peak: 0.12, att: 0.3, dec: 0.3, len: 0.8});
   },
@@ -114,7 +114,7 @@ const SFX = {
   },
   heal(ctx, o, t) { // gentle rising chimes, major pentatonic
     [0, 4, 7, 9, 12, 16].forEach((s, i) => {
-      I.pluck(ctx, o.out, t + i * 0.075, 72 + s, 0.22 - i * 0.015, 'kantele');
+      I.pluck(ctx, o.out, t + i * 0.075, 72 + s, 0.32 - i * 0.02, 'kantele');
       I.pluck(ctx, o.wet, t + i * 0.075, 72 + s, 0.12, 'harp');
     });
     tone(ctx, o.wet, t + 0.3, {f: mtof(96), peak: 0.04, att: 0.15, dec: 0.4});
@@ -137,14 +137,14 @@ const SFX = {
     burst(ctx, o.wet, t, {kind: 'brown', type: 'lowpass', f: 400, peak: 0.25, att: 0.3, dec: 0.5});
   },
   buy(ctx, o, t) { // coins dropped into the purse, then the purse closes
-    clink(ctx, o.out, t, 2620, 0.9);
-    clink(ctx, o.out, t + 0.07, 2350, 0.7);
-    clink(ctx, o.out, t + 0.13, 2100, 0.5);
+    clink(ctx, o.out, t, 2230, 1);
+    clink(ctx, o.out, t + 0.07, 1980, 0.8);
+    clink(ctx, o.out, t + 0.13, 1760, 0.6);
     burst(ctx, o.out, t + 0.2, {kind: 'brown', type: 'lowpass', f: 500, peak: 0.45, att: 0.003, dec: 0.04});
   },
   sell(ctx, o, t) { // coins counted out onto the table, bright and rising
-    [2100, 2350, 2620, 2950].forEach((f, i) => clink(ctx, o.out, t + i * 0.065, f, 0.6 + i * 0.12));
-    clink(ctx, o.wet, t + 0.2, 2950, 0.4);
+    [1760, 1980, 2230, 2500].forEach((f, i) => clink(ctx, o.out, t + i * 0.065, f, 0.7 + i * 0.13));
+    clink(ctx, o.wet, t + 0.2, 2500, 0.4);
   },
   quest(ctx, o, t) { // short harp motif, rising, with a soft bell
     [62, 66, 69, 74].forEach((m, i) => I.pluck(ctx, o.out, t + i * 0.11, m, 0.3, 'harp'));
@@ -162,7 +162,7 @@ const SFX = {
   error(ctx, o, t) { // dull, low double knock; never a harsh buzzer
     [0, 0.13].forEach((d, i) => {
       const x = osc(ctx, 'square', i ? 155 : 185), lp = filt(ctx, 'lowpass', 700, 1), g = ctx.createGain();
-      perc(g, t + d, 0.11, 0.005, 0.05);
+      perc(g, t + d, 0.24, 0.005, 0.05);
       x.connect(lp); lp.connect(g); g.connect(o.out); x.start(t + d); x.stop(t + d + 0.35);
     });
   },

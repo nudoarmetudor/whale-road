@@ -31,7 +31,7 @@ export const GRIMA = [
   q(2, {
     title: 'Brooms at Jómsborg',
     giver: {port: 'heidaby', building: 'hall', npc: 'jarl'}, npcName: 'Harbour-Jarl Auðun Broadbelt',
-    requiresRenown: 30,
+    requiresRenown: 15,
     offer: [
       N('Half the errands on the Whale Road end with "but the Jómsborg raiders..." Gríma, could you possibly...'),
       H('Knock down a fortress? Granny did say every errand.'),

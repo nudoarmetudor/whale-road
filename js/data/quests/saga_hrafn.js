@@ -121,13 +121,13 @@ export const HRAFN = [
     giver: {port: 'orkney', building: 'hall', npc: 'jarl'}, npcName: 'Jarl Arnkell Tidewatcher',
     requiresRenown: 22,
     offer: [
-      N('Skald, the grey ships passed my islands bound for Færeyjar, with storm crows on their masts.'),
+      N('Skald, the grey ships passed my islands, with storm crows on their masts. The crows stayed to hunt the North Sea.'),
       N('One crow took my second-best helmet. I want it back, or avenged.'),
       H('I\'ll avenge it in verse, and in arrows if the verse falls short.'),
       N('Bring furs too. My hall is draughtier than a skald\'s excuses.'),
     ],
     steps: [
-      {do: 'defeat', enemies: ['storm_crow', 'storm_crow'], at: {sea: 'norwegian_sea'}, text: 'Hunt the storm crows over the Norwegian Sea.'},
+      {do: 'defeat', enemies: ['storm_crow', 'storm_crow'], at: {sea: 'north_sea'}, text: 'Hunt the storm crows over the North Sea.'},
       {do: 'deliver', good: 'furs', qty: 20, port: 'orkney', building: 'hall', text: 'Deliver 20 furs to Jarl Arnkell.'},
     ],
     done: [

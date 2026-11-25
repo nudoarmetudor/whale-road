@@ -191,18 +191,20 @@ export const BJARKI = [
     giver: {port: 'kaenugard', building: 'hall', npc: 'slav_prince'}, npcName: 'Voivode Yaromir',
     requiresRenown: 48,
     offer: [
-      N('The Tallyman\'s raiders squat at the rapids, taxing every boat. Our merchants turn back, and the Greeks go without.'),
-      N('Break their hold, bring furs for the Greek market, and the road to Miklagarðr is yours.'),
+      N('The Tallyman\'s raiders squat at the rapids south of here, taxing every boat bound for the Greeks.'),
+      N('Bring furs for the Greek market, and our best pilot will take you down past them to Miklagarðr.'),
       H('I\'ve never seen the Great City. Is it really bigger than Heiðabýr?'),
       N('Heiðabýr would fit in its bathhouses. Twice.'),
     ],
     steps: [
       {do: 'deliver', good: 'furs', qty: 30, port: 'kaenugard', building: 'hall', text: 'Deliver 30 furs to Voivode Yaromir.'},
-      {do: 'defeat', enemies: ['raider_drakkar', 'raider_snekkja'], at: {sea: 'dnieper_rapids'}, text: 'Break the raiders\' hold on the Dnieper rapids.'},
+      {do: 'visit', port: 'kaenugard', building: 'market', text: 'Meet Svitozar the rapids-pilot.', say: [
+        N('Seven rapids, seven names, each ruder than the last. I\'ll slip you past the bandits going south.', C.svitozar),
+        N('Coming back north with a Greek ship behind you? Then we stop slipping and start knocking.', C.svitozar),
+      ]},
     ],
     done: [
-      N('The rapids are free! Svitozar the pilot will name a rock after you. It\'s a big rock.'),
-      N('Sail south to Miklagarðr: silk, Greek fire, and officials with more seals than a seal colony.'),
+      N('Sail south to Miklagarðr: silk, Greek fire, and officials with more seals than a seal colony.', C.svitozar),
       H('Silk for Kolli. He\'ll pretend he doesn\'t want it.'),
     ],
     reward: {silver: 18000, renown: 15, unlockPorts: ['miklagard'], unlockGoods: ['silk']},
@@ -218,6 +220,7 @@ export const BJARKI = [
     ],
     steps: [
       {do: 'pay', silver: 20000, port: 'miklagard', building: 'hall', text: 'Pay Ioannikios the 20 000 s "witness fee".'},
+      {do: 'defeat', enemies: ['raider_drakkar', 'raider_snekkja', 'raider_snekkja'], at: {sea: 'dnieper_rapids'}, text: 'Sail north and break the raiders\' hold on the Dnieper rapids.'},
       {do: 'visit', port: 'orkney', building: 'hall', text: 'Bring Jarl Arnkell of the Orkneys into the alliance.', say: [
         N('A Greek dromon sailing north with you? I\'ll come just to see their faces at Jómsborg.', C.arnkell),
         N('And I\'ll write to Færeyjar and Ísland. They make sail-cloth that laughs at gales.', C.arnkell),
@@ -225,7 +228,7 @@ export const BJARKI = [
       {do: 'networth', amount: 120000, text: 'Grow your net worth to 120 000 s to feed the allied fleet.'},
     ],
     done: [
-      N('Your purse satisfies form twenty. An imperial dromon will meet your fleet in the Baltic.'),
+      N('The rapids are free, says the pilot, and your purse satisfies form twenty. A dromon will meet you in the Baltic.'),
       N('Also, Færeyjar and Ísland now trade with you. Very rustic. Very warm. Very far.'),
       H('Every shield on the Whale Road. Let Svartkell count those.'),
     ],

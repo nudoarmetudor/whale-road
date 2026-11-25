@@ -39,12 +39,14 @@ export function say(lines, opts = {}) {
       if (i >= lines.length) return end();
       const l = lines[i];
       const isHero = l.who === 'hero';
+      const narr = l.who === 'narrator' || l.who === 'skald_narrator';
+      el.classList.toggle('narration', narr);
       const pid = isHero ? heroPortraitId() : (l.who === 'npc' || !l.who) ? (opts.npc || 'townsman') : l.who;
       el.classList.toggle('right', isHero);
       el.classList.remove('done');
       port.innerHTML = '';
-      port.appendChild(portraitEl(pid, isHero && S()?.look ? {look: S().look} : {}));
-      name.textContent = l.name || (isHero ? heroName() : (l.who === 'npc' || !l.who) ? (opts.npcName || npcTitle(opts.npc)) : npcTitle(l.who));
+      if (!narr) port.appendChild(portraitEl(pid, isHero && S()?.look ? {look: S().look} : {}));
+      name.textContent = narr ? (l.name || '') : l.name || (isHero ? heroName() : (l.who === 'npc' || !l.who) ? (opts.npcName || npcTitle(opts.npc)) : npcTitle(l.who));
       full = String(l.text); typed = 0; text.textContent = '';
       const d = typeDelay();
       if (!d) return finishLine();

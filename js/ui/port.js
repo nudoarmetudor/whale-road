@@ -5,7 +5,7 @@ import {A, D, X, S, read, call, portName} from './adapters.js';
 import {opts, settleSVG, profile, updateProfile} from './options.js';
 import {flow, music, themeFor} from './ctx.js';
 import {bldIcon, hudIcon, BLD_NAMES} from './icons.js';
-import {say} from './dialogue.js';
+import {say, talking} from './dialogue.js';
 import {journalSheet, fleetSheet, cargoSheet, itemsSheet} from './sheets.js';
 
 let view = null; // {screen, hud, tags, layout()}
@@ -140,7 +140,8 @@ export function refreshHud() {
     stat('silver', 'Silver', silver(s.silver), '.silver'),
     stat('bank', 'Bank here', silver(bankHere), '.bank', bankAll > bankHere ? `All banks: ${silver(bankAll)}` : 'Deposited in this town'),
     stat('debt', 'Debt', loan.amount ? silver(loan.amount) : 'none', loan.overdue ? '.debt.bad' : '.debt', loan.overdue ? 'Overdue! Collectors are coming.' : ''),
-    stat('date', date.season ? date.season[0].toUpperCase() + date.season.slice(1) : 'Date', date.label, '.date'),
+    stat('date', date.season ? date.season[0].toUpperCase() + date.season.slice(1) : 'Date',
+      date.monthName ? [`${date.d} ${date.monthName}`, h('span.yr', ` ${date.year}`)] : date.label, '.date', date.label),
     h('div.stat.cargo', {title: 'Cargo'}, h('span.si', {html: hudIcon('cargo')}),
       h('span.sv', h('small', 'Holds'), meter(used / capN, `${num(used)}/${num(capN)}`, used > capN ? 'bad' : ''))),
     stat('renown', r.title || 'Renown', num(s.renown || 0), '.renown', r.next ? `Next rank: ${r.next}` : ''),
@@ -186,7 +187,8 @@ const HINTS = [
 ];
 let hintAt = 0;
 function maybeTutorial() {
-  if (!opts.tutorial || profile()?.tutorialDone || !view?.screen.isConnected) return;
+  if (talking() || document.querySelector('#modal-layer > *')) { setTimeout(maybeTutorial, 800); return; }
+  if (!opts.tutorial || profile()?.tutorialDone || (S().stats?.voyages || 0) > 0 || !view?.screen.isConnected) return;
   hintAt = 0; showHint();
 }
 export function nextHint() {
@@ -213,4 +215,3 @@ function showHint() {
 }
 
 export const portView = () => view;
-export {call, toast};

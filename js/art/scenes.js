@@ -4,7 +4,7 @@
 import {
   f0, f1, rng, mix, mul, lighten, darken, makeCtx, stdDefs, textureDefs, staticOpen, grainOverlay,
   sky, cloud, range, hills, forest, broadTree, cypress, spruce, water, sea, smokeAnim, flagAnim,
-  gullsAnim, snowfall, rainfall, torch, vignette, svgOpen, smooth, pts2d, yAt, vgrad, rgrad, ridgeFrom,
+  gullsAnim, snowfall, rainfall, torch, vignette, svgOpen, smooth, pts2d, yAt, vgrad, rgrad, ridgeFrom, aurora,
 } from './paint.js';
 
 // ---------- port data (optional; sim owner writes js/data/ports.js) ----------
@@ -307,7 +307,7 @@ const B = {};
 B.house = (c, st, o = {}) => {
   const r = c.rng;
   const w = o.w || 84 + r() * 40, h = o.h || 28 + r() * 10;
-  const H = st.gableFront || o.gable ? gableHouse(c, st, { w: w * 0.62, h: h * 1.05, wins: r() < 0.6 ? [[0, -h * 0.75]] : [], doorX: 0 })
+  const H = st.gableFront || o.gable || (st.gableMix && r() < st.gableMix) ? gableHouse(c, st, { w: w * 0.62, h: h * 1.05, wins: r() < 0.6 ? [[0, -h * 0.75]] : [], doorX: 0 })
     : house(c, st, { w, h, wins: r() < 0.7 ? [w * 0.25 * r.sign()] : [], bow: (st.bow || 0) * 0.6, dragon: st.dragon && r() < 0.3, beams: st.beams });
   let s = H.svg;
   if (r() < 0.55) addSmoke(c, H.smoke[0], H.smoke[1], 0.7);
@@ -348,7 +348,7 @@ B.hall = (c, st) => {
     addFlag(c, -96, -110, 30, 18, st.banner);
     s += `<path d="M-96 -70v-42" stroke="${c.col('#8a7a5a', 1, c.dep)}" stroke-width="2.4"/>`;
   } else {
-    const great = c.greatHall ? 1.25 : 1;
+    const great = st.greatHall ? 1.22 : 1;
     const H = house(c, st, { w: 230 * great, h: 46 * great, d: 96 * great, rh: 60 * great, bow: (st.bow || 2) * 1.8, wins: [], shields: true, doorX: 0, doorW: 20, doorH: 34 * great, dscale: 1.3 });
     s += H.svg;
     // carved portal posts
@@ -922,6 +922,28 @@ function cliff(c, pts, base, o = {}) { // steep rock face with strata, grass top
   if (o.grass !== false) s += `<path d="${top}" stroke="${c.col(c.pal.winter ? '#eef2f6' : c.pal.ground, 1, dep)}" stroke-width="${o.grassW || 10}" fill="none" stroke-linecap="round"/>`;
   return s;
 }
+function faroeCliff(c, pts, base, dep) { // steep green slopes, stepped basalt bands, sheer foot
+  const r = c.rng;
+  let s = hills(c, { pts, base, depth: dep, color: c.pal.winter ? '#dfe5ec' : '#5d7e38', tension: 0.4 });
+  // basalt steps: horizontal broken dark bands following the slope
+  let d = '';
+  const x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+  for (let k = 0; k < 9; k++) {
+    const yy = 220 + k * 50 + r() * 12;
+    let started = false;
+    for (let x = x0; x <= x1; x += 18) {
+      const top = yAt(pts, x);
+      if (yy > top + 14 && r() > 0.12) { d += `${started ? 'L' : 'M'}${f0(x)} ${f0(yy + Math.sin(x * 0.03 + k) * 4)}`; started = true; } else started = false;
+    }
+  }
+  s += `<path d="${d}" stroke="${c.col('#3a3a36', 0.8, dep)}" stroke-width="7" fill="none" opacity=".55" stroke-linejoin="round"/>`;
+  s += `<path d="${d}" stroke="${c.col('#8a8a7a', 1, dep)}" stroke-width="2" fill="none" opacity=".35" transform="translate(0 -4)"/>`;
+  // sheer rock foot at the sea
+  const fp = [];
+  for (let x = x0; x <= x1; x += 40) fp.push([x, Math.max(yAt(pts, x) + 6, base - 130 + Math.sin(x * 0.02) * 20)]);
+  s += cliff(c, fp, base, { depth: dep, color: '#4a4640', grass: false, strata: 10, streaks: 14 });
+  return s;
+}
 function waterfall(c, x, y0, y1, w = 10, dep = 0) {
   const k = c.pal.night ? 0.45 : 1;
   const g = vgrad(c, 'wfall', [[0, '#ffffff', 0.55 * k], [0.5, '#e8f2f6', 0.85 * k], [1, '#ffffff', 0.95 * k]]);
@@ -944,7 +966,7 @@ function standingStones(c, cx, cy, rx, n, h, dep = 0) {
   for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; items.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * rx * 0.22, Math.sin(a)]); }
   items.sort((a, b) => a[1] - b[1]);
   for (const [x, y, z] of items) {
-    const hh = h * (0.7 + c.rng() * 0.5) * (1 + z * 0.12), w = hh * 0.22;
+    const hh = h * (0.7 + c.rng() * 0.5) * (1 + z * 0.12), w = hh * 0.42;
     s += `<path d="M${f1(x - w / 2)} ${f1(y)}l${f1(w * 0.1)} ${f1(-hh)}l${f1(w * 0.8)} ${f1(-hh * 0.08)}l${f1(w * 0.1)} ${f1(hh * 1.08)}z" fill="${c.col('#7a786e', z < 0 ? 0.75 : 0.95, dep)}"/><path d="M${f1(x + (c.sunSide > 0 ? 0 : -w / 2))} ${f1(y)}v${f1(-hh)}h${f1(w / 2)}v${f1(hh)}z" fill="#fff" opacity=".1"/>`;
   }
   return s;
@@ -1035,13 +1057,19 @@ function volcano(c, x, y, w, h, o = {}) {
   let s = P(cone, c.col('#4a4a50', 0.9, dep));
   const sd = c.sunSide;
   s += P(`M${x} ${y - h}L${x - sd * tw} ${y - h}C${x - sd * tw * 1.6} ${y - h * 0.85} ${x - sd * w * 0.26} ${y - h * 0.3} ${x - sd * w / 2} ${y}L${x - sd * w * 0.05} ${y}Z`, c.col('#3a3a44', 0.5, dep), ' opacity=".55"');
-  // snow cap with fingers
-  const sh = h * 0.4;
-  let snow = `M${x - tw} ${y - h}L${x + tw} ${y - h}`;
-  const n = 9;
-  for (let i = 0; i <= n; i++) { const t = i / n; const xx = x + tw + (w * 0.14) * t * 1.2 - (w * 0.14 * 2.4 + tw * 2) * t; }
-  snow = `M${x - tw} ${y - h}L${x + tw} ${y - h}C${x + tw * 1.4} ${y - h * 0.9} ${x + w * 0.14} ${y - h + sh * 0.9} ${x + w * 0.15} ${y - h + sh}l-12 -16l-10 26l-12 -30l-14 34l-10 -40l-12 30l-14 -26l-12 36l-12 -38l-10 22l-12 -30C${x - w * 0.12} ${y - h + sh * 0.6} ${x - tw * 1.4} ${y - h * 0.92} ${x - tw} ${y - h}Z`;
+  // snow cap with a ragged lower edge
+  const sh = h * 0.38;
+  const cx0 = x - tw - (w * 0.2) * 0.62, cx1 = x + tw + (w * 0.2) * 0.62;
+  let snow = `M${x - tw} ${y - h}L${x + tw} ${y - h}C${x + tw * 1.5} ${y - h * 0.9} ${x + w * 0.12} ${y - h + sh * 0.7} ${cx1} ${y - h + sh}`;
+  const steps = 12;
+  for (let i = 1; i <= steps; i++) { const t = i / steps; const xx = cx1 + (cx0 - cx1) * t; const yy = y - h + sh - (i % 2 ? 16 + c.rng() * 22 : -c.rng() * 10) - Math.sin(t * Math.PI) * 10; snow += `L${f1(xx)} ${f1(i === steps ? y - h + sh : yy)}`; }
+  snow += `C${x - w * 0.12} ${y - h + sh * 0.7} ${x - tw * 1.5} ${y - h * 0.9} ${x - tw} ${y - h}Z`;
   s += P(snow, c.col('#f2f5f8', 1, dep * 0.8));
+  s += P(`M${x} ${y - h}L${x - sd * tw} ${y - h}C${x - sd * tw * 1.5} ${y - h * 0.9} ${x - sd * w * 0.12} ${y - h + sh * 0.7} ${x - sd * (tw + w * 0.124)} ${y - h + sh}L${x - sd * w * 0.02} ${y - h + sh * 0.8}Z`, c.col('#9aa8c0', 1, dep), ' opacity=".45"');
+  let gl = '';
+  for (let i = 0; i < 9; i++) { const t = (i + 0.5) / 9 - 0.5; gl += `M${f1(x + t * tw * 2.4)} ${f1(y - h + sh * 0.9)}L${f1(x + t * w * 0.9)} ${f1(y - 6)}`; }
+  s += `<path d="${gl}" stroke="${c.col('#2a2a30', 0.7, dep)}" stroke-width="3" opacity=".35"/>`;
+  s += P(`M${x - w / 2} ${y}C${x - w * 0.3} ${y - h * 0.16} ${x + w * 0.3} ${y - h * 0.16} ${x + w / 2} ${y}Z`, c.col(c.pal.winter ? '#dfe4ea' : '#5a6a3a', 0.9, dep), ' opacity=".8"');
   if (o.lava) s += `<path d="M${x - 6} ${y - h + 6}q-10 ${h * 0.3} 4 ${h * 0.55}M${x + 8} ${y - h + 8}q14 ${h * 0.25} 2 ${h * 0.4}" stroke="#ff7a2a" stroke-width="3" fill="none" opacity="${c.pal.night || c.pal.dusk ? 0.9 : 0.35}"/>`;
   c.anims.push(smokeAnim(c, x, y - h - 4, 2.6, { color: c.pal.night ? '#585c70' : '#bdb8b4', drift: 70, dur: 9, puffs: 5 }));
   return s;
@@ -1102,8 +1130,9 @@ function stockade(c, x0, x1, y, h = 30, dep = 0) {
 function seaGate(c, x, y, k = 1) { // Jómsborg: fortified harbour gate over the water
   const dep = c.dep || 0, col = '#5e564a';
   let s = `<g transform="translate(${x} ${y}) scale(${k})">`;
+  s += P(`M-72 0V-60Q0 -134 72 -60V0Z`, nightish(c) ? '#3a2010' : '#14161a');
   s += face(c, `M-160 0V-120H160V0H70V-60Q0 -130 -70 -60V0Z`, c.col(col, 0.9, dep), 'pStone');
-  s += P(`M-70 0V-60Q0 -130 -70 -60Z`, '#000', ' opacity="0"');
+  s += face(c, `M-250 0V-80H-160V0ZM160 0V-80H250V0Z`, c.col(col, 0.8, dep), 'pStone');
   // portcullis in the arch
   let pc = '';
   for (let i = -60; i <= 60; i += 12) pc += `M${i} ${-60 - Math.sqrt(Math.max(0, 1 - (i / 70) ** 2)) * 50}V-14`;
@@ -1230,7 +1259,10 @@ function assemble(c, L, o) {
   const vb = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="${o.width || 1600}" height="${o.height || 900}" preserveAspectRatio="${o.fit || 'xMidYMid slice'}" class="wr-scene">`;
   let s = vb + `<defs>${c.defs.join('')}</defs>`;
   s += staticOpen(c) + L.stat + '</g>';
-  s += `<g class="wr-anims" pointer-events="none">${c.anims.join('')}</g>`;
+  const k = L.split ?? c.anims.length;
+  s += `<g class="wr-anims" pointer-events="none">${c.anims.slice(0, k).join('')}</g>`;
+  if (L.front) s += `<g class="wr-front">${L.front}</g>`;
+  if (k < c.anims.length) s += `<g class="wr-anims" pointer-events="none">${c.anims.slice(k).join('')}</g>`;
   if (L.top) s += L.top;
   s += grainOverlay(c);
   s += L.labels || '';
@@ -1255,16 +1287,24 @@ function buildPort(id, o, def) {
   let grp = '';
   if (def.land) grp += def.land(c);
   if (def.back) grp += def.back(c);
+  if (def.landmark && !buildings.includes('altar')) {
+    const lm = def.landmark;
+    c.dep = lm.dep || 0; c.cur = { X: lm.x, Y: lm.y, s: lm.s, flip: false };
+    const res = (lm.draw || ((cc, st2) => (TEMPLE[lm.temple || st2.temple] || TEMPLE.stave)(cc, st2)))(c, st);
+    grp += `<g class="landmark" transform="translate(${lm.x} ${lm.y}) scale(${lm.s})">${res.svg}</g>`;
+    c.dep = 0;
+  }
   const T = town(c, st, def.slots(c), buildings);
   grp += T.svg;
   if (def.mid) grp += def.mid(c);
   stat += `<g id="${refl}">${grp}</g>`;
+  if (def.over) stat += def.over(c);
   if (def.water) stat += def.water(c, refl);
-  if (def.front) stat += def.front(c);
+  const split = c.anims.length;
+  const front = def.front ? def.front(c) : '';
   if (c.pal.winter && def.snowfall !== false) c.anims.push(snowfall(c, 60));
   c.anims.push(gullsAnim(c, def.gulls ?? 4, def.gullBand || {}));
-  stat += vignette(c, 0.42);
-  return assemble(c, { stat, labels: T.labels }, o);
+  return assemble(c, { stat, labels: T.labels, front: front + vignette(c, 0.42), split }, o);
 }
 
 function autoDetail() {
@@ -1311,6 +1351,7 @@ PORT_DEFS.ravnfjord = {
 
 // Kaupang: gentle Vestfold bay, low wooded hills, beach market, many boats
 PORT_DEFS.kaupang = {
+  landmark: { x: 1500, y: 548, s: 0.62, dep: 0.15 },
   culture: 'norse', sunX: { day: 420, dusk: 340, night: 380 },
   style: { rk: 'shingle', roof: '#4e4236', wall: '#6a4a32' },
   sky: c => ({ clouds: 8, cloudBand: [50, 260], cloudW: 220 }),
@@ -1340,6 +1381,706 @@ PORT_DEFS.kaupang = {
     return s;
   },
 };
+
+// Hlaðir: the jarl's seat on a headland of the broad fjord; the great hall crowns the rise
+PORT_DEFS.hladir = {
+  culture: 'norse', sunX: { day: 360, dusk: 300, night: 420 }, seedExtra: 'b', style: { greatHall: true },
+  sky: c => ({ clouds: 7, cloudBand: [60, 280], cloudW: 240, rays: !c.pal.night, aurora: c.pal.night && c.pal.winter }),
+  far: c => {
+    let s = range(c, { pts: [[-30, 430], [160, 380], [380, 405], [560, 360], [760, 400], [980, 372], [1200, 410], [1420, 380], [1630, 420]], base: 470, depth: 0.88, snow: c.pal.winter ? 420 : 380, rough: 0.2, mistBand: 30 });
+    s += sea(c, 452, 720);
+    s += hills(c, { pts: [[560, 720], [760, 600], [980, 520], [1180, 470], [1380, 480], [1630, 500]], base: 720, depth: 0.3, color: '#5f7a3a' });
+    s += forest(c, { x0: 1300, x1: 1630, step: 13, hMin: 30, hMax: 50, depth: 0.3, ground: x => 486 + (x - 1300) * 0.05 });
+    return s;
+  },
+  land: c => land(c, [[620, 720], [800, 640], [980, 566], [1160, 518], [1360, 522], [1630, 540]], 720, { bank: 8 })
+    + groundDetail(c, { x0: 800, x1: 1600, y0: 560, y1: 700, paths: [[[760, 700], [960, 630], [1120, 580], [1240, 540]]], hay: [[1560, 560, 1]], fences: [[1420, 1580, 590]] }),
+  slots: c => rows([
+    [536, 1.0, 0.04, [[1250, 'high'], [1500, 'edge'], [1060, 'center']]],
+    [612, 0.92, 0, [[920, 'center'], [1140, 'center'], [1380, 'center'], [1580, 'f', { filler: 'spruce' }]]],
+    [690, 1.0, 0, [[860, 'shore'], [1130, 'shore'], [1420, 'center'], [700, 'edge']]],
+  ]),
+  water: (c, refl) => water(c, { y: 720, reflect: refl, reflOp: 0.38 }),
+  front: c => {
+    let s = '';
+    const m1 = mooredShip(c, 360, 780, 0.75, { sail: 'set', facing: 1 }); s += m1.stat; c.anims.push(m1.anim);
+    const m2 = mooredShip(c, 560, 850, 1.0, { sail: 'furled', facing: -1, shieldCols: ['#a3302a', '#c9a04a'] }); s += m2.stat; c.anims.push(m2.anim);
+    s += boat(c, 140, 740, 0.8, { mast: true }) + boat(c, 960, 770, 1, { man: true, facing: -1 });
+    s += pier(c, 820, 1140, 742);
+    return s;
+  },
+};
+
+// Hálogaland: jagged peaks straight from the sea, fish racks, the midnight sun of summer
+PORT_DEFS.halogaland = {
+  culture: 'norse', sunX: { day: 1240, dusk: 1000, night: 820 }, seedExtra: 'c',
+  style: { roof: '#6a8a3a' },
+  pal: (t, se) => t === 'night' && se !== 'winter'
+    ? { skyTop: '#3b4a7a', skyMid: '#d88a7a', skyBot: '#ffd08a', sun: '#ffe2a0', sunGlow: '#ffb060', light: '#ffcf9a', shadow: '#3a3058', haze: '#d8a090', waterTop: '#f0b884', waterMid: '#8a6a7a', waterBot: '#2a2c4a', cloudLit: '#ffd0a0', cloudShade: '#8a6a86', glow: 0.6, sunY: 470, sunR: 40, ground: '#6a7038', groundDark: '#3a3a28', foliage: '#4a5a30' }
+    : t === 'day' ? { skyTop: '#3f7cc0', skyMid: '#8fc0e4', light: '#fff8ec' } : {},
+  sky: c => ({ clouds: 5, cloudBand: [80, 300], cloudW: 180, noStars: c.pal.time === 'night' && !c.pal.winter, aurora: c.pal.night && c.pal.winter, glowR: c.pal.time === 'night' && !c.pal.winter ? 700 : undefined }),
+  far: c => {
+    let s = sea(c, 480, 720);
+    s += range(c, { pts: [[700, 520], [780, 430], [840, 450], [900, 380], [960, 410], [1010, 330], [1060, 380], [1120, 300], [1170, 350], [1230, 280], [1290, 340], [1350, 270], [1420, 330], [1490, 290], [1560, 350], [1630, 330]], base: 540, depth: 0.62, snow: c.pal.winter ? 420 : 330, rough: 0.7, iter: 5, color: '#5a5a66', foot: '#46603a', gullies: 18, maxShade: 90 });
+    s += range(c, { pts: [[-30, 480], [30, 360], [80, 300], [110, 330], [150, 220], [190, 260], [230, 170], [270, 230], [300, 200], [350, 140], [390, 210], [430, 180], [480, 260], [540, 320], [600, 400], [680, 500]], base: 540, depth: 0.42, snow: c.pal.winter ? 380 : 230, rough: 0.7, iter: 5, color: '#56565c', foot: '#46603a', gullies: 22, maxShade: 90 });
+    return s;
+  },
+  land: c => land(c, [[-30, 590], [260, 560], [560, 590], [880, 600], [1180, 584], [1630, 570]], 716, { bank: 10, color2: '#5a5a42' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 590, y1: 700, rocks: [[100, 700, 5, 1], [1500, 690, 5, 1]] }),
+  slots: c => rows([
+    [588, 0.78, 0.05, [[200, 'high'], [470, 'edge'], [1080, 'high'], [1340, 'edge']]],
+    [646, 0.92, 0, [[330, 'center'], [700, 'center'], [980, 'center'], [1260, 'center']]],
+    [700, 1.0, 0, [[150, 'shore', { filler: 'house' }], [560, 'shore'], [1460, 'shore']]],
+  ]),
+  mid: c => fishRack(c, 860, 708, 1.25) + fishRack(c, 1110, 712, 1.1) + fishRack(c, 60, 660, 0.9) + fishRack(c, 1530, 640, 0.9) + figure(c, 990, 712, 1.1, { arm: [6, -10] }),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = '';
+    const m1 = mooredShip(c, 620, 820, 0.9, { sail: 'furled', facing: 1, sailCols: ['#24467a', '#efe2c4'] }); s += m1.stat; c.anims.push(m1.anim);
+    s += boat(c, 300, 772, 1.1, { man: true }) + boat(c, 1300, 790, 1.2, { mast: true, facing: -1 }) + boat(c, 1100, 860, 1.3, { man: true });
+    s += rocks(c, 1560, 892, 6, 2.6, 0, '#4a4a4e') + rocks(c, 40, 896, 5, 2.2, 0, '#4a4a4e');
+    return s;
+  },
+};
+
+// Færeyjar: sheer green cliffs, sea stacks, grass roofs in a cove, mist
+PORT_DEFS.faereyjar = {
+  culture: 'island', sunX: { day: 1060, dusk: 900, night: 1000 },
+  pal: (t) => t === 'day' ? { skyTop: '#7a94ae', skyMid: '#b8c6cc', skyBot: '#dcdcd2', haze: '#c4ccd0', hazeK: 0.9, light: '#f2f0ea' } : { hazeK: 0.85 },
+  sky: c => ({ clouds: 12, cloudBand: [20, 300], cloudW: 300 }),
+  far: c => {
+    let s = sea(c, 470, 720);
+    s += seaStack(c, 760, 486, 50, 120, { depth: 0.75 }) + seaStack(c, 830, 488, 30, 80, { depth: 0.75 });
+    s += faroeCliff(c, [[-30, 130], [120, 140], [260, 190], [400, 290], [520, 410], [600, 520]], 720, 0.3);
+    s += faroeCliff(c, [[1000, 520], [1120, 360], [1260, 230], [1400, 170], [1630, 150]], 720, 0.3);
+    s += waterfall(c, 1330, 196, 520, 7, 0.3);
+    return s;
+  },
+  land: c => land(c, [[300, 640], [480, 590], [700, 600], [920, 594], [1120, 570], [1330, 560]], 716, { bank: 12, color: '#6a8a3a' })
+    + groundDetail(c, { x0: 400, x1: 1300, y0: 600, y1: 700, fences: [[440, 560, 640]], rocks: [[1240, 690, 4, 1]] }),
+  slots: c => rows([
+    [588, 0.8, 0.05, [[560, 'high'], [820, 'edge'], [1060, 'high']]],
+    [640, 0.94, 0, [[480, 'center'], [740, 'center'], [980, 'center'], [1200, 'center']]],
+    [698, 1.0, 0, [[620, 'shore'], [900, 'shore'], [1140, 'edge']]],
+  ]),
+  mid: c => {
+    // grazing sheep
+    let g = '';
+    for (const [x, y] of [[470, 612], [500, 620], [1250, 590], [1290, 596], [1180, 604]]) g += `<ellipse cx="${x}" cy="${y}" rx="9" ry="6" fill="${c.col('#f0ece0', 1)}"/><circle cx="${x + 9}" cy="${y - 3}" r="3" fill="${c.col('#2a2420', 1)}"/>`;
+    return g;
+  },
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.35 }),
+  front: c => {
+    let s = seaStack(c, 160, 880, 160, 300, { depth: 0 }) + seaStack(c, 1480, 900, 120, 220, { depth: 0 });
+    const m = mooredShip(c, 760, 810, 0.8, { sail: 'furled', sailCols: ['#24467a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 1100, 780, 1, { man: true }) + boat(c, 460, 770, 0.9, { facing: -1 });
+    return s;
+  },
+  gulls: 7,
+};
+
+// Ísland: turf farmsteads on a black-sand bay, a snow volcano, glacier and steaming springs
+PORT_DEFS.island = {
+  culture: 'island', sunX: { day: 520, dusk: 420, night: 600 },
+  pal: (t) => t === 'day' ? { skyTop: '#5e86b4', skyMid: '#a8c4d8', light: '#fffaf0' } : {},
+  sky: c => ({ clouds: 6, cloudBand: [60, 240], cloudW: 260, aurora: c.pal.night }),
+  far: c => {
+    let s = range(c, { pts: [[-30, 440], [200, 404], [420, 414], [600, 392], [760, 420], [900, 470]], base: 480, depth: 0.82, snow: 425, rough: 0.12, color: '#6a6a70' });
+    s += volcano(c, 1120, 470, 760, 300, { depth: 0.55, lava: true });
+    s += hills(c, { pts: [[-30, 490], [300, 470], [640, 486], [900, 470], [1200, 480], [1630, 466]], base: 560, depth: 0.5, color: '#6a6a3e' });
+    s += hills(c, { pts: [[-30, 530], [400, 520], [800, 540], [1200, 526], [1630, 534]], base: 620, depth: 0.32, color: '#7a7a42' });
+    return s;
+  },
+  land: c => land(c, [[-30, 560], [300, 552], [640, 566], [980, 560], [1300, 548], [1630, 556]], 716, { color: '#7a7a40', color2: '#4a4a36' })
+    + `<path d="M-30 704Q400 690 800 700T1630 694V720H-30Z" fill="${c.col(c.pal.winter ? '#cfd4dc' : '#2e2c2e', 0.95)}"/>`
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 570, y1: 690, rocks: [[250, 640, 4, 0.8], [1350, 620, 5, 0.8], [800, 690, 3, 0.7]], fences: [[60, 220, 640]] }),
+  slots: c => rows([
+    [576, 0.84, 0.05, [[200, 'high'], [520, 'edge'], [1100, 'high'], [1380, 'edge'], [820, 'f', { filler: 'turf' }]]],
+    [632, 0.98, 0, [[340, 'center'], [680, 'center'], [980, 'center'], [1260, 'center'], [1520, 'f', { filler: 'turf' }]]],
+    [690, 1.04, 0, [[160, 'edge'], [560, 'shore'], [1420, 'shore']]],
+  ]),
+  over: c => {
+    // hot springs: steaming pools, one geyser
+    let s = '';
+    for (const [x, y, w] of [[860, 678, 40], [1000, 690, 30], [1180, 668, 26]]) s += `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${w * 0.25}" fill="${c.col('#6ac0c8', 1)}"/><ellipse cx="${x}" cy="${y}" rx="${w * 1.15}" ry="${w * 0.32}" fill="none" stroke="${c.col('#d8d0b0', 1)}" stroke-width="3"/>`;
+    c.anims.push(steam(c, 860, 674, 1.2), steam(c, 1180, 664, 0.9), geyserAnim(c, 1000, 688, 1));
+    return s;
+  },
+  water: (c, refl) => water(c, { y: 720, reflect: refl, reflOp: 0.35 }),
+  front: c => {
+    let s = '';
+    const m = mooredShip(c, 900, 820, 0.85, { sail: 'furled', sailCols: ['#24467a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 380, 780, 1.1, { man: true }) + rocks(c, 1520, 896, 5, 2.4, 0, '#2e2c30') + rocks(c, 60, 896, 4, 2, 0, '#2e2c30');
+    return s;
+  },
+  snowfall: true,
+};
+
+// Orkneyjar: low green isles, a ring of standing stones, a broch on a tidal islet
+PORT_DEFS.orkney = {
+  culture: 'norse', sunX: { day: 1250, dusk: 1150, night: 1200 }, seedExtra: 'd',
+  style: { wk: 'pStone', wall: '#9a948a', rk: 'turf', dragon: false, filler: (c, st) => FILL.flag(c, st) },
+  sky: c => ({ clouds: 9, cloudBand: [40, 320], cloudW: 280, rays: c.pal.dusk }),
+  far: c => {
+    let s = sea(c, 470, 720);
+    s += hills(c, { pts: [[-30, 486], [200, 470], [460, 480], [700, 474]], base: 500, depth: 0.85, color: '#6a8a4a' });
+    s += hills(c, { pts: [[900, 490], [1100, 462], [1400, 470], [1630, 480]], base: 500, depth: 0.85, color: '#6a8a4a' });
+    s += cliff(c, [[1180, 640], [1300, 560], [1420, 540], [1630, 530]], 720, { depth: 0.2, color: '#7a6a58' });
+    return s;
+  },
+  land: c => land(c, [[-30, 560], [260, 540], [520, 566], [800, 584], [1060, 600], [1260, 620]], 716, { bank: 10 })
+    + standingStones(c, 300, 530, 120, 11, 46, 0.12)
+    + groundDetail(c, { x0: 0, x1: 1200, y0: 580, y1: 700, fences: [[880, 1020, 620]], rocks: [[1100, 700, 3, 0.8]] }),
+  slots: c => rows([
+    [596, 0.82, 0.04, [[560, 'high'], [820, 'edge'], [120, 'edge']]],
+    [646, 0.95, 0, [[260, 'center'], [500, 'center'], [760, 'center'], [1000, 'center']]],
+    [700, 1.0, 0, [[160, 'shore'], [620, 'shore'], [1040, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.35 }),
+  front: c => {
+    let s = `<path d="M1260 760Q1380 720 1500 726Q1580 732 1630 760V790H1260Z" fill="${c.col(c.pal.winter ? '#e8ecf0' : '#6a8a3a', 0.9)}"/>` + broch(c, 1430, 738, 1.1);
+    const m = mooredShip(c, 760, 820, 0.85, { sail: 'furled' }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 380, 780, 1, { man: true }) + boat(c, 1100, 860, 1.2);
+    return s;
+  },
+  gulls: 6,
+};
+
+// Dyflin: the longphort by the black pool, an earthen bank, round tower on the hill, soft mountains
+PORT_DEFS.dyflin = {
+  landmark: { x: 230, y: 506, s: 0.85, dep: 0.12 },
+  culture: 'gael', sunX: { day: 400, dusk: 360, night: 460 },
+  sky: c => ({ clouds: 10, cloudBand: [40, 300], cloudW: 260 }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 420], [180, 380], [360, 400], [560, 360], [760, 410], [1000, 384], [1240, 400], [1630, 380]], base: 520, depth: 0.82, color: '#5a6a7a', mist: 40, tension: 0.6 });
+    s += hills(c, { pts: [[-30, 480], [260, 460], [600, 486], [900, 466], [1300, 480], [1630, 470]], base: 600, depth: 0.5, color: '#5f8a3a' });
+    s += forest(c, { x0: 1150, x1: 1630, step: 12, hMin: 26, hMax: 40, depth: 0.45, kind: 'mixed', ground: x => 478 });
+    return s;
+  },
+  land: c => land(c, [[-30, 520], [200, 500], [420, 540], [700, 560], [1000, 556], [1300, 548], [1630, 560]], 716, { bank: 10 })
+    + rampart(c, [[520, 560], [700, 548], [920, 545], [1140, 552], [1360, 566]], 26, { ph: 20 })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 700, paths: [[[200, 700], [460, 640], [800, 650], [1200, 630], [1560, 640]]], hay: [[1530, 580, 1]], fences: [[40, 200, 580]] }),
+  slots: c => rows([
+    [536, 0.8, 0.05, [[140, 'high'], [380, 'edge']]],
+    [600, 0.86, 0, [[640, 'center'], [880, 'center'], [1120, 'center'], [1360, 'edge']]],
+    [644, 0.95, 0, [[320, 'center'], [760, 'center'], [1240, 'center'], [1520, 'f', { filler: 'tree' }]]],
+    [700, 1.02, 0, [[160, 'edge'], [560, 'shore'], [1000, 'shore'], [1420, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = pier(c, 300, 560, 760);
+    const m1 = mooredShip(c, 840, 816, 0.85, { sail: 'furled', sailCols: ['#2a7a3a', '#efe2c4'] }); s += m1.stat; c.anims.push(m1.anim);
+    const m2 = mooredShip(c, 1300, 860, 0.95, { sail: 'none' }); s += m2.stat; c.anims.push(m2.anim);
+    s += boat(c, 140, 800, 1, { man: true });
+    return s;
+  },
+};
+
+// Jórvík: river town of the Danes in the old Roman walls; minster tower, wooden bridge
+PORT_DEFS.jorvik = {
+  landmark: { x: 1230, y: 548, s: 0.95, dep: 0.06 },
+  culture: 'anglonorse', sunX: { day: 1180, dusk: 1060, night: 1100 },
+  sky: c => ({ clouds: 9, cloudBand: [50, 280], cloudW: 240 }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 440], [300, 420], [700, 436], [1100, 416], [1630, 430]], base: 520, depth: 0.85, color: '#7a7a5a', mist: 30 });
+    s += hills(c, { pts: [[-30, 480], [400, 470], [800, 486], [1200, 470], [1630, 480]], base: 560, depth: 0.55, color: '#6a8a40' });
+    s += forest(c, { x0: -30, x1: 1630, step: 16, hMin: 20, hMax: 34, depth: 0.5, kind: 'mixed', ground: x => 484 });
+    return s;
+  },
+  land: c => land(c, [[-30, 540], [400, 530], [800, 540], [1200, 528], [1630, 536]], 716, { bank: 10 })
+    + seaWall(c, 120, 1480, 546, 40, [180, 520, 860, 1200, 1430], { col: '#b4a88e', tw: 46, th: 30, depth: 0.08 })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 580, y1: 700, paths: [[[60, 690], [420, 640], [800, 650], [1200, 630], [1560, 640]]], fences: [[1300, 1440, 690]] }),
+  slots: c => rows([
+    [586, 0.84, 0.04, [[300, 'high'], [700, 'center'], [1060, 'high'], [1340, 'edge']]],
+    [640, 0.94, 0, [[160, 'center'], [480, 'center'], [880, 'center'], [1220, 'center'], [1500, 'center']]],
+    [700, 1.0, 0, [[330, 'shore'], [700, 'shore'], [1100, 'edge']]],
+  ]),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = bridge(c, 1180, 1640, 742, { arch: 10, people: 5 });
+    const m = mooredShip(c, 640, 820, 0.8, { sail: 'furled', sailCols: ['#9a2a2a', '#d8c070'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 260, 780, 1, { man: true }) + boat(c, 980, 850, 1.1, { facing: -1 });
+    return s;
+  },
+};
+
+// Hamwic: flat Saxon estuary at low tide, mudflats and channels, thatch and a timber church
+PORT_DEFS.hamwic = {
+  landmark: { x: 1360, y: 560, s: 0.9, dep: 0.05 },
+  culture: 'saxon', sunX: { day: 1100, dusk: 1000, night: 1060 },
+  style: { gableMix: 0.2 },
+  sky: c => ({ clouds: 8, cloudBand: [60, 330], cloudW: 300, rays: c.pal.dusk }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 470], [300, 456], [700, 466], [1100, 450], [1630, 462]], base: 520, depth: 0.85, color: '#7a8a5a', mist: 24 });
+    s += hills(c, { pts: [[-30, 500], [500, 494], [1000, 504], [1630, 496]], base: 560, depth: 0.55, color: '#6a8a40' });
+    for (const [x, h] of [[120, 70], [260, 60], [1380, 80], [1500, 66], [900, 56]]) s += broadTree(c, x, 506, h, { depth: 0.5 });
+    return s;
+  },
+  land: c => land(c, [[-30, 540], [400, 536], [800, 546], [1200, 536], [1630, 542]], 690, { color2: '#6a7a40' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 680, paths: [[[100, 680], [500, 620], [900, 640], [1400, 610]]], hay: [[60, 580, 1], [1550, 570, 1.1]], fences: [[1300, 1480, 600], [40, 200, 640]] }),
+  slots: c => rows([
+    [570, 0.82, 0.04, [[260, 'high'], [620, 'edge'], [980, 'high'], [1260, 'edge'], [1480, 'f', { filler: 'tree' }]]],
+    [622, 0.94, 0, [[140, 'center'], [460, 'center'], [800, 'center'], [1120, 'center'], [1400, 'center']]],
+    [674, 1.0, 0, [[300, 'shore'], [700, 'shore'], [1080, 'edge']]],
+  ]),
+  water: (c, refl) => {
+    let s = water(c, { y: 700, reflect: refl, reflOp: 0.3 });
+    // mudflats with channels
+    s += `<path d="M-30 760Q300 740 600 770T1100 756T1630 774V820Q1300 800 1000 818T400 806T-30 820Z" fill="${c.col(c.pal.winter ? '#b8b8b4' : '#7a6a50', 0.85)}" opacity=".9"/><path d="M-30 700Q400 714 800 706T1630 712V724Q1200 730 800 720T-30 726Z" fill="${c.col('#8a7a5a', 0.85)}" opacity=".85"/>`;
+    return s;
+  },
+  front: c => {
+    let s = '';
+    s += longship(c, 520, 792, 0.85, { sail: 'none', shieldCols: ['#c8a030', '#5a3a6a'] }).svg;
+    const m = mooredShip(c, 1180, 860, 0.9, { sail: 'furled', sailCols: ['#c8a030', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 240, 800, 1, { man: true }) + boat(c, 860, 780, 0.9, { facing: -1 }) + figure(c, 640, 800, 1.2, { arm: [6, -4] }) + figure(c, 420, 806, 1.2);
+    return s;
+  },
+};
+
+// Rúðuborg: Frankish city on the river, chalk hills with vines, a great stone abbey
+PORT_DEFS.rudaborg = {
+  landmark: { x: 1180, y: 566, s: 1.05, dep: 0.04 },
+  culture: 'frank', sunX: { day: 480, dusk: 400, night: 500 },
+  style: { gableMix: 0.6, beams: true, wk: 'pWattle', wall: '#e0d4b4', filler: (c, st) => (c.rng() < 0.5 ? FILL.ttown(c, st) : B.house(c, st)) },
+  sky: c => ({ clouds: 6, cloudBand: [60, 260], cloudW: 230 }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 420], [300, 380], [600, 400], [900, 370], [1200, 386], [1630, 360]], base: 560, depth: 0.7, color: '#8a9a5a' });
+    s += cliff(c, [[900, 440], [1100, 400], [1300, 380], [1630, 370]], 560, { depth: 0.6, color: '#e8e2d0', grassW: 8, strata: 20 });
+    // vineyard rows
+    let v = '';
+    for (let i = 0; i < 8; i++) for (let x = 90 + i * 10; x < 560 - i * 12; x += 9) v += `M${x} ${f0(424 + i * 15 + Math.sin(x / 80) * 4)}h0`;
+    s += `<path d="${v}" stroke="${c.col(c.pal.winter ? '#8a8a7a' : '#3e5a24', 0.9, 0.6)}" stroke-width="6" stroke-linecap="round" fill="none"/>`;
+    s += hills(c, { pts: [[-30, 520], [400, 510], [800, 520], [1200, 506], [1630, 516]], base: 600, depth: 0.42, color: '#6a8a40' });
+    return s;
+  },
+  land: c => land(c, [[-30, 552], [400, 544], [800, 552], [1200, 540], [1630, 548]], 712, { bank: 0 })
+    + face(c, 'M-20 712V696H1620V712Z', c.col('#c4b89c', 0.85), 'pStone')
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 570, y1: 690, paths: [[[0, 680], [400, 640], [800, 660], [1200, 630], [1600, 650]]], pathW: 20 }),
+  slots: c => rows([
+    [578, 0.84, 0.04, [[820, 'high'], [300, 'edge'], [1240, 'high'], [1480, 'edge'], [560, 'f'], [1040, 'f']]],
+    [632, 0.94, 0, [[160, 'center'], [460, 'center'], [760, 'center'], [1080, 'center'], [1380, 'center']]],
+    [690, 1.0, 0, [[320, 'shore'], [740, 'shore'], [1180, 'shore'], [1520, 'f']]],
+  ]),
+  water: (c, refl) => water(c, { y: 712, reflect: refl, reflOp: 0.42 }),
+  front: c => {
+    let s = '';
+    s += `<g>${longship(c, 380, 800, 0.8, { sail: 'furled', sailCols: ['#2a4a9a', '#efe2c4'] }).svg}</g>`;
+    // Frankish river barge
+    s += `<path d="M900 846h300l-20 22h-260z" fill="${c.col('#5a4030', 0.9)}"/><path d="M1050 846V720" stroke="${c.col('#4a3420')}" stroke-width="4"/><path d="M1052 724l60 50h-60z" fill="${c.col('#e8dcc0', 0.95)}"/>` + figure(c, 960, 846, 1.1) + figure(c, 1150, 846, 1.1, { arm: [6, -6], tool: [10, 20] });
+    s += `<path d="M900 866h300l-20 16h-260z" fill="#000" opacity=".2"/>`;
+    return s;
+  },
+};
+
+// Heiðabýr: Danish market town inside its great semicircular rampart, by the Noor
+PORT_DEFS.heidaby = {
+  landmark: { x: 1480, y: 548, s: 0.6, dep: 0.1 },
+  culture: 'dane', sunX: { day: 1240, dusk: 1100, night: 1200 },
+  style: { gableMix: 0.15 },
+  sky: c => ({ clouds: 8, cloudBand: [60, 300], cloudW: 260 }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 452], [300, 440], [700, 452], [1100, 436], [1630, 448]], base: 520, depth: 0.8, color: '#6a8a4a', mist: 30 });
+    s += forest(c, { x0: -30, x1: 1630, step: 13, hMin: 22, hMax: 38, depth: 0.6, kind: 'mixed', twoTone: false, ground: x => 452 + Math.sin(x / 200) * 6 });
+    return s;
+  },
+  land: c => land(c, [[-30, 520], [400, 510], [800, 516], [1200, 508], [1630, 514]], 712, { bank: 8 })
+    + rampart(c, [[-30, 600], [120, 520], [400, 488], [800, 480], [1200, 486], [1480, 516], [1630, 590]], 44, { ph: 18 })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 700, paths: [[[60, 700], [420, 640], [800, 650], [1180, 620], [1540, 640]]] })
+    + `<path d="${smooth([[760, 540], [800, 600], [760, 660], [820, 714]], 0.5)}" stroke="${c.col(c.pal.waterMid, 1)}" stroke-width="12" fill="none"/>`,
+  slots: c => rows([
+    [556, 0.8, 0.04, [[260, 'high'], [520, 'edge'], [1040, 'high'], [1300, 'edge']]],
+    [612, 0.9, 0, [[140, 'center'], [400, 'center'], [660, 'center'], [960, 'center'], [1200, 'center'], [1440, 'center']]],
+    [692, 1.0, 0, [[300, 'shore'], [620, 'shore'], [1020, 'shore'], [1380, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 712, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = stockade(c, -10, 380, 800, 34) + stockade(c, 1260, 1620, 806, 34);
+    const m1 = mooredShip(c, 640, 810, 0.75, { sail: 'furled', sailCols: ['#b0302a', '#efe2c4'] }); s += m1.stat; c.anims.push(m1.anim);
+    const m2 = mooredShip(c, 1010, 852, 0.9, { sail: 'none', facing: -1 }); s += m2.stat; c.anims.push(m2.anim);
+    s += pier(c, 420, 640, 750) + boat(c, 1200, 770, 0.9, { man: true });
+    return s;
+  },
+};
+
+// Jómsborg: the raider fortress on the lagoon, sea gate over the harbour, grim sky
+PORT_DEFS.jomsborg = {
+  landmark: { x: 1050, y: 560, s: 0.8, dep: 0.05 },
+  culture: 'wend', sunX: { day: 400, dusk: 300, night: 420 },
+  pal: (t) => t === 'day' ? { skyTop: '#4a5470', skyMid: '#8a94a4', skyBot: '#c8c4b8', light: '#e8e4dc', haze: '#9aa0a8', cloudShade: '#5e6270', cloudLit: '#c8c8c8', waterTop: '#7a8a94', waterMid: '#3a4e5a', waterBot: '#1a262e' }
+    : t === 'dusk' ? { skyMid: '#8a4a5a', skyBot: '#d07a4a', cloudShade: '#3a2a3a' } : {},
+  sky: c => ({ clouds: 12, cloudBand: [20, 340], cloudW: 320 }),
+  far: c => {
+    let s = hills(c, { pts: [[-30, 470], [400, 456], [800, 466], [1200, 450], [1630, 462]], base: 520, depth: 0.82, color: '#4a5a40', mist: 26 });
+    s += forest(c, { x0: -30, x1: 1630, step: 12, hMin: 22, hMax: 34, depth: 0.6, twoTone: false, ground: x => 466 });
+    return s;
+  },
+  land: c => land(c, [[-30, 516], [400, 506], [800, 512], [1200, 504], [1630, 512]], 716, { bank: 8, color: '#5a6a3a' })
+    + palisade(c, -20, 1620, x => 530 + Math.sin(x / 300) * 6, 40, { step: 8, col: '#4a3a2a' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 700, patches: 12 }),
+  slots: c => rows([
+    [570, 0.82, 0.04, [[200, 'high'], [1400, 'high'], [500, 'edge'], [1120, 'edge']]],
+    [626, 0.92, 0, [[120, 'center'], [380, 'center'], [1240, 'center'], [1500, 'center']]],
+    [690, 1.0, 0, [[260, 'shore'], [1340, 'shore'], [560, 'edge'], [1060, 'edge']]],
+  ]),
+  mid: c => { c.dep = 0; return seaGate(c, 800, 740, 1.1); },
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = '';
+    const m1 = mooredShip(c, 800, 790, 0.6, { sail: 'furled', sailCols: ['#1a1a1a', '#8e1a1a'], shieldCols: ['#1a1a1a', '#8e1a1a'], hull: '#2a201a' }); s += m1.stat; c.anims.push(m1.anim);
+    const m2 = mooredShip(c, 360, 850, 0.95, { sail: 'set', sailCols: ['#8e1a1a', '#2a2420'], shieldCols: ['#1a1a1a', '#8e1a1a', '#b08a3a'], hull: '#2a201a', vane: true }); s += m2.stat; c.anims.push(m2.anim);
+    const m3 = mooredShip(c, 1280, 846, 0.9, { sail: 'none', facing: -1, shieldCols: ['#1a1a1a', '#8e1a1a'], hull: '#2a201a' }); s += m3.stat; c.anims.push(m3.anim);
+    return s;
+  },
+  gulls: 2,
+};
+
+// Truso: amber coast of the Aesti, dunes and pines, pickers in the surf
+PORT_DEFS.truso = {
+  culture: 'aesti', sunX: { day: 1150, dusk: 1050, night: 1150 },
+  style: { filler: (c, st) => FILL.hut(c, st) },
+  sky: c => ({ clouds: 6, cloudBand: [60, 280], cloudW: 280, rays: c.pal.dusk }),
+  far: c => {
+    let s = forest(c, { x0: -30, x1: 1630, step: 10, hMin: 30, hMax: 60, depth: 0.7, twoTone: false, wide: 0.3, ground: x => 486 + Math.sin(x / 160) * 10 });
+    s += hills(c, { pts: [[-30, 500], [400, 490], [800, 500], [1200, 488], [1630, 496]], base: 560, depth: 0.5, color: '#5a7a3a' });
+    s += forest(c, { x0: 1000, x1: 1630, step: 12, hMin: 50, hMax: 80, depth: 0.42, wide: 0.28, ground: x => 500 });
+    return s;
+  },
+  land: c => land(c, [[-30, 546], [400, 540], [800, 552], [1200, 540], [1630, 548]], 690, { color2: '#7a7a4a' })
+    + dunes(c, [[-30, 680], [200, 640], [420, 668], [640, 650], [900, 676], [1160, 648], [1400, 670], [1630, 650]], 720, 0)
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 640, patches: 10, fences: [[1300, 1460, 600]] }),
+  slots: c => rows([
+    [568, 0.84, 0.04, [[300, 'high'], [640, 'edge'], [1000, 'high'], [1300, 'edge']]],
+    [618, 0.94, 0, [[160, 'center'], [480, 'center'], [820, 'center'], [1140, 'center'], [1460, 'center']]],
+    [660, 1.0, 0, [[350, 'shore'], [940, 'shore']]],
+  ]),
+  water: (c, refl) => {
+    let s = `<path d="M-30 720Q400 712 800 724T1630 716V760H-30Z" fill="${c.col(c.pal.winter ? '#dcdcd8' : '#e0cc96', 0.95)}"/>`;
+    s += water(c, { y: 748, reflect: null });
+    s += `<path d="M-30 750Q200 740 400 752T800 748T1200 754T1630 746" stroke="#fff" stroke-width="4" fill="none" opacity=".6"/>`;
+    return s;
+  },
+  front: c => {
+    let s = amberPile(c, 300, 734, 1.2) + amberPile(c, 760, 738, 1) + amberPile(c, 1320, 730, 1.3);
+    s += amberPicker(c, 480, 784, 1.5) + amberPicker(c, 620, 800, 1.6) + amberPicker(c, 1080, 790, 1.5) + amberPicker(c, 1200, 812, 1.7);
+    s += figure(c, 330, 736, 1.3, { arm: [-4, 8] }) + figure(c, 1350, 732, 1.3);
+    const m = mooredShip(c, 860, 856, 0.8, { sail: 'furled', sailCols: ['#d0801a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 160, 760, 1.1, { refl: false });
+    return s;
+  },
+};
+
+// Gotland: limestone sea stacks, stone storehouse towers, turquoise sea, picture stones
+PORT_DEFS.gotland = {
+  culture: 'gotlander', sunX: { day: 1200, dusk: 1100, night: 1150 },
+  pal: (t) => t === 'day' ? { waterTop: '#8fd0d0', waterMid: '#3a8a9a', waterBot: '#1c4a5a' } : {},
+  style: { filler: (c, st) => (c.rng() < 0.4 ? FILL.kastal(c, st) : B.house(c, st)) },
+  sky: c => ({ clouds: 5, cloudBand: [60, 260], cloudW: 220 }),
+  far: c => {
+    let s = sea(c, 470, 720);
+    s += hills(c, { pts: [[-30, 500], [300, 480], [700, 488], [1100, 470], [1630, 482]], base: 560, depth: 0.55, color: '#7a8a5a' });
+    for (let x = 30; x < 1600; x += 70) s += `<path d="M${x} ${492 + Math.sin(x) * 6}q8 -18 16 0z" fill="${c.col('#3a5a3a', 0.9, 0.5)}"/>`;
+    return s;
+  },
+  land: c => land(c, [[-30, 540], [400, 530], [800, 540], [1200, 528], [1630, 536]], 712, { bank: 14, bankCol: '#cfc6b0', color: '#7a8a50' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 700, fences: [[60, 240, 600]], rocks: [[700, 700, 4, 0.8]] }),
+  slots: c => rows([
+    [566, 0.84, 0.04, [[220, 'high'], [520, 'edge'], [860, 'f', { filler: 'kastal' }], [1160, 'high'], [1440, 'edge']]],
+    [622, 0.94, 0, [[120, 'center'], [400, 'center'], [700, 'center'], [1000, 'center'], [1300, 'center'], [1540, 'f', { filler: 'kastal' }]]],
+    [690, 1.0, 0, [[300, 'shore'], [740, 'shore'], [1200, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 712, reflect: refl, reflOp: 0.35 }),
+  front: c => {
+    let s = seaStack(c, 120, 860, 90, 230, { col: '#9a9282', grass: false, depth: 0 }) + seaStack(c, 230, 840, 60, 150, { col: '#a09886', grass: false, depth: 0 }) + seaStack(c, 1500, 870, 110, 260, { col: '#9a9282', grass: false, depth: 0 });
+    const m = mooredShip(c, 800, 830, 0.85, { sail: 'furled', sailCols: ['#2a5a8a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 1100, 780, 1, { man: true }) + boat(c, 480, 770, 0.9);
+    return s;
+  },
+};
+
+// Birka: island town on the lake, the hillfort on its rock, a field of burial mounds
+PORT_DEFS.birka = {
+  culture: 'svear', sunX: { day: 1150, dusk: 1060, night: 1100 },
+  sky: c => ({ clouds: 6, cloudBand: [60, 260], cloudW: 220, aurora: c.pal.night && c.pal.winter }),
+  far: c => {
+    let s = sea(c, 470, 720);
+    s += hills(c, { pts: [[-30, 486], [200, 470], [420, 482]], base: 500, depth: 0.85, color: '#4a6a3a' }) + hills(c, { pts: [[600, 490], [800, 476], [1000, 488]], base: 500, depth: 0.85, color: '#4a6a3a' }) + hills(c, { pts: [[1240, 484], [1420, 466], [1630, 478]], base: 500, depth: 0.85, color: '#4a6a3a' });
+    // the Borg: rocky hill with rampart and palisade
+    s += hills(c, { pts: [[40, 600], [140, 480], [260, 424], [380, 432], [470, 500], [580, 590]], base: 640, depth: 0.2, color: '#5f7a3a', tension: 0.5 });
+    s += rocks(c, 200, 500, 4, 1.4, 0.2, '#7a746a') + rocks(c, 430, 520, 3, 1.2, 0.2, '#7a746a') + rocks(c, 300, 560, 3, 1.5, 0.2, '#7a746a');
+    s += palisade(c, 170, 440, x => 436 + Math.abs(x - 320) * 0.08, 22, { step: 7, depth: 0.2 });
+    s += forest(c, { x0: 1150, x1: 1630, step: 12, hMin: 40, hMax: 70, depth: 0.25, kind: 'mixed', ground: x => 540 });
+    return s;
+  },
+  land: c => land(c, [[-30, 600], [200, 586], [500, 570], [800, 556], [1100, 550], [1400, 556], [1630, 552]], 712, { bank: 10 })
+    + mounds(c, [[1100, 566, 30], [1180, 572, 24], [1250, 562, 34], [1330, 574, 22], [1400, 566, 28], [1480, 576, 20]], 0.15)
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 590, y1: 700, paths: [[[100, 700], [400, 650], [760, 660], [1100, 630], [1500, 640]]] }),
+  slots: c => rows([
+    [592, 0.84, 0.04, [[620, 'high'], [880, 'edge'], [1500, 'f', { filler: 'birch' }]]],
+    [640, 0.94, 0, [[200, 'center'], [460, 'center'], [740, 'center'], [1000, 'center'], [1280, 'center']]],
+    [698, 1.0, 0, [[140, 'edge'], [520, 'shore'], [940, 'shore'], [1360, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 712, reflect: refl, reflOp: 0.42 }),
+  front: c => {
+    let s = pier(c, 360, 620, 756) + pier(c, 1000, 1200, 770);
+    const m = mooredShip(c, 760, 824, 0.8, { sail: 'furled', sailCols: ['#2a4a86', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 1340, 820, 1.1, { man: true }) + boat(c, 200, 800, 1);
+    return s;
+  },
+};
+
+// Aldeigjuborg: fortress on the high bank of the Volkhov, birch woods, log houses
+PORT_DEFS.aldeigja = {
+  culture: 'slav', sunX: { day: 420, dusk: 360, night: 460 },
+  style: { gableMix: 0.6, filler: (c, st) => (c.rng() < 0.6 ? FILL.izba(c, st) : B.house(c, st)) },
+  sky: c => ({ clouds: 7, cloudBand: [60, 280], cloudW: 260 }),
+  far: c => {
+    let s = forest(c, { x0: -30, x1: 1630, step: 11, hMin: 26, hMax: 44, depth: 0.72, twoTone: false, ground: x => 470 + Math.sin(x / 180) * 8 });
+    s += hills(c, { pts: [[-30, 486], [400, 476], [800, 490], [1200, 478], [1630, 486]], base: 540, depth: 0.55, color: '#5f7a3a' });
+    s += forest(c, { x0: -30, x1: 500, step: 13, kind: 'birch', hMin: 50, hMax: 80, depth: 0.4, ground: x => 500 });
+    return s;
+  },
+  land: c => land(c, [[-30, 520], [400, 512], [800, 520], [1200, 508], [1630, 516]], 716, { bank: 40, bankCol: '#8a6a4a' })
+    + kremlin(c, 900, 1600, x => 560 - (x - 900) * 0.02, 46, [[930, 54, 110], [1220, 50, 100], [1560, 56, 112]], { col: '#8a7a64', pat: 'pStone', roof: '#7a776d' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 670, paths: [[[60, 660], [400, 620], [800, 630], [1100, 610]]] }),
+  slots: c => rows([
+    [560, 0.82, 0.04, [[160, 'edge'], [420, 'high'], [680, 'edge'], [1080, 'f', { filler: 'izba' }], [1380, 'high']]],
+    [618, 0.94, 0, [[120, 'center'], [360, 'center'], [620, 'center'], [880, 'center'], [1160, 'center'], [1440, 'center']]],
+    [672, 1.0, 0, [[260, 'shore'], [760, 'shore'], [1240, 'shore']]],
+  ]),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = pier(c, 200, 460, 750);
+    const m = mooredShip(c, 900, 820, 0.8, { sail: 'furled', sailCols: ['#c22a22', '#e8c040'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 1300, 800, 1.1, { man: true }) + boat(c, 600, 860, 1.2, { facing: -1, man: true });
+    return s;
+  },
+};
+
+// Hólmgarðr: the wide river, the long market bridge, the log kremlin on the left bank
+PORT_DEFS.holmgard = {
+  landmark: { x: 1480, y: 560, s: 0.7, dep: 0.12 },
+  culture: 'slav', sunX: { day: 1180, dusk: 1080, night: 1120 },
+  style: { gableMix: 0.6, filler: (c, st) => (c.rng() < 0.6 ? FILL.izba(c, st) : B.house(c, st)) },
+  sky: c => ({ clouds: 8, cloudBand: [60, 280], cloudW: 260 }),
+  far: c => {
+    let s = sea(c, 456, 720, { noGlint: false });
+    s += forest(c, { x0: -30, x1: 1630, step: 12, hMin: 16, hMax: 26, depth: 0.82, twoTone: false, ground: x => 460 });
+    s += hills(c, { pts: [[-30, 520], [200, 486], [420, 476], [620, 500], [700, 540]], base: 600, depth: 0.25 });
+    s += kremlin(c, 30, 640, x => 500 + Math.abs(x - 330) * 0.04, 44, [[60, 46, 96], [330, 56, 120], [610, 46, 96]], { depth: 0.22 });
+    s += hills(c, { pts: [[960, 540], [1120, 500], [1400, 490], [1630, 500]], base: 600, depth: 0.25 });
+    return s;
+  },
+  land: c => land(c, [[-30, 560], [300, 552], [640, 576], [760, 600]], 716, { bank: 10 }) + land(c, [[880, 600], [1000, 566], [1300, 548], [1630, 556]], 716, { bank: 10 })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 580, y1: 700, patches: 10 }),
+  slots: c => rows([
+    [590, 0.86, 0.03, [[140, 'high'], [420, 'edge'], [1100, 'high'], [1380, 'edge']]],
+    [646, 0.95, 0, [[90, 'center'], [330, 'center'], [580, 'center'], [1040, 'center'], [1280, 'center'], [1520, 'center']]],
+    [700, 1.0, 0, [[200, 'shore'], [1180, 'shore'], [1460, 'shore']]],
+  ]),
+  mid: c => bridge(c, 600, 1060, 590, { arch: 20, step: 40, pileH: 120, people: 8, fs: 0.95 }),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = '';
+    const m = mooredShip(c, 760, 820, 0.85, { sail: 'furled', sailCols: ['#c22a22', '#e8c040'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 300, 790, 1, { man: true }) + boat(c, 1200, 800, 1.1, { man: true, facing: -1 }) + boat(c, 1420, 860, 1.2);
+    return s;
+  },
+};
+
+// Kænugarðr: the high hills above the great river, a kremlin on the crest, the lower town below
+PORT_DEFS.kaenugard = {
+  culture: 'slav', sunX: { day: 420, dusk: 340, night: 460 },
+  style: { gableMix: 0.6, filler: (c, st) => (c.rng() < 0.6 ? FILL.izba(c, st) : B.house(c, st)) },
+  sky: c => ({ clouds: 6, cloudBand: [50, 240], cloudW: 220, rays: c.pal.dusk }),
+  far: c => {
+    let s = sea(c, 520, 720);
+    s += hills(c, { pts: [[-30, 520], [400, 512], [700, 522]], base: 540, depth: 0.85, color: '#7a8a5a' });
+    s += hills(c, { pts: [[560, 720], [700, 560], [860, 420], [1060, 330], [1300, 310], [1630, 330]], base: 720, depth: 0.2, color: '#6a8a3a', tension: 0.6 });
+    s += kremlin(c, 960, 1600, x => 340 + Math.abs(x - 1280) * 0.03, 48, [[990, 50, 108], [1280, 64, 140], [1580, 50, 108]], { depth: 0.18 });
+    s += forest(c, { x0: 620, x1: 900, step: 14, kind: 'mixed', hMin: 30, hMax: 50, depth: 0.2, ground: x => 720 - (x - 560) * 1.05 + 40 });
+    return s;
+  },
+  land: c => land(c, [[-30, 640], [300, 610], [560, 600], [800, 560], [1000, 470], [1200, 420], [1630, 410]], 716, { bank: 10 })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 600, y1: 700, paths: [[[200, 700], [600, 640], [900, 560], [1150, 470], [1300, 420]]], pathW: 18 }),
+  slots: c => rows([
+    [440, 0.92, 0.06, [[1180, 'high'], [1440, 'high']]],
+    [520, 0.94, 0.03, [[980, 'high'], [1260, 'center'], [1500, 'edge']]],
+    [626, 0.95, 0, [[120, 'center'], [380, 'center'], [640, 'center'], [880, 'center']]],
+    [700, 1.0, 0, [[240, 'shore'], [600, 'shore'], [1180, 'shore'], [1480, 'edge']]],
+  ]),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.36 }),
+  front: c => {
+    let s = `<path d="M-30 760Q120 740 280 752Q340 760 300 776H-30Z" fill="${c.col(c.pal.winter ? '#e0e2e4' : '#d8c08a', 0.95)}"/>`;
+    const m = mooredShip(c, 860, 830, 0.85, { sail: 'furled', sailCols: ['#c22a22', '#e8c040'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 140, 760, 1, { refl: false, man: true }) + boat(c, 1300, 800, 1.1, { man: true });
+    return s;
+  },
+};
+
+// Miklagarðr: the Queen of Cities: sea walls, a sea of domes, cypresses, the chain across the harbour
+PORT_DEFS.miklagard = {
+  culture: 'byzantine', sunX: { day: 1200, dusk: 1080, night: 1150 },
+  pal: (t, se) => t === 'day' ? { skyTop: '#3a78c0', skyMid: '#8cc0e8', skyBot: '#f0e6cc', light: '#fff0d8', waterTop: '#7ab8c8', waterMid: '#2b6f8a', waterBot: '#123a50', ground: '#8a8a4a', haze: '#d0d8d8' } : { ground: '#7a7a44' },
+  style: { filler: (c, st) => (c.rng() < 0.25 ? FILL.cypress(c, st) : FILL.byzhouse(c, st)) },
+  sky: c => ({ clouds: 4, cloudBand: [60, 220], cloudW: 200 }),
+  far: c => {
+    let s = sea(c, 470, 720);
+    s += hills(c, { pts: [[-30, 474], [300, 456], [600, 468], [900, 450], [1300, 462], [1630, 452]], base: 500, depth: 0.85, color: '#8a9a6a', mist: 20 });
+    s += hills(c, { pts: [[-30, 560], [200, 470], [500, 420], [800, 400], [1100, 410], [1400, 440], [1630, 470]], base: 720, depth: 0.25, color: '#8a8a4a', tension: 0.6 });
+    c.dep = 0.15;
+    s += greatDome(c, 760, 470, 1.05);
+    c.dep = 0;
+    for (const [x, y, h] of [[480, 470, 80], [540, 476, 70], [1000, 470, 90], [1060, 478, 66], [300, 520, 80], [1300, 500, 84]]) s += cypress(c, x, y, h, 0.18);
+    return s;
+  },
+  land: c => land(c, [[-30, 540], [300, 500], [600, 490], [900, 488], [1200, 500], [1630, 520]], 716, { bank: 0, color: '#8a8a4a' })
+    + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 690, patches: 8 }),
+  slots: c => rows([
+    [530, 0.82, 0.05, [[200, 'high'], [470, 'edge'], [1080, 'high'], [1360, 'edge'], [700, 'f'], [900, 'f']]],
+    [594, 0.92, 0, [[100, 'center'], [360, 'center'], [620, 'center'], [880, 'center'], [1140, 'center'], [1420, 'center']]],
+    [660, 0.98, 0, [[240, 'shore'], [560, 'shore'], [1020, 'shore'], [1320, 'shore'], [1540, 'f']]],
+  ]),
+  mid: c => seaWall(c, -30, 1630, 712, 46, [60, 380, 700, 1020, 1340, 1580], { col: '#ddd0b4', tw: 48, th: 32 }),
+  water: (c, refl) => water(c, { y: 716, reflect: refl, reflOp: 0.4 }),
+  front: c => {
+    let s = harbourChain(c, -10, 1610, 790);
+    // dromons
+    s += longship(c, 1200, 850, 0.95, { sail: 'set', sailCols: ['#7a1f66', '#f2e6c8'], shields: false, hull: '#5a2a1a', oars: true }).svg;
+    const m = mooredShip(c, 420, 846, 0.85, { sail: 'furled', sailCols: ['#a3302a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
+    s += boat(c, 800, 770, 1, { man: true, col: '#7a4a2a' });
+    return s;
+  },
+  gulls: 5,
+};
+
+// ---------- title scene ----------
+// A dragon ship running out at sunrise beneath sea cliffs, aurora fading in the high sky.
+// The top ~35% is kept calm for the game title.
+export function titleScene(o = {}) {
+  const c = makeCtx({ seed: 'title', time: 'dawn', season: 'summer', detail: o.detail || autoDetail(), sunX: 1010, animate: o.animate,
+    pal: { skyTop: '#0e1838', skyMid: '#7a4a78', skyBot: '#ffb070', sun: '#fff0c8', sunGlow: '#ffa050', light: '#ffc890', shadow: '#1e1a38', haze: '#d08a7a', waterTop: '#f0a070', waterMid: '#5a3a5a', waterBot: '#0e1428', sunY: 548, sunR: 44, cloudLit: '#ffc890', cloudShade: '#5a3a5a' } });
+  stdDefs(c);
+  let stat = sky(c, { clouds: 5, cloudBand: [300, 470], cloudW: 380, streaks: true, noStars: true, glowR: 760, rays: true, rayOp: 0.1, rayDir: -Math.PI / 2, midAt: 0.38, botAt: 0.6 });
+  // a few last stars and the aurora in the dark upper sky
+  let st = '';
+  const r = c.rng;
+  for (let i = 0; i < 60; i++) st += `M${f0(r() * 1600)} ${f0(Math.pow(r(), 1.8) * 260)}h0`;
+  stat += `<path d="${st}" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".6"/>`;
+  const aur = c.animate ? '' : '';
+  stat += sea(c, 548, 900, { noGlint: true });
+  stat += range(c, { pts: [[420, 548], [560, 500], [700, 520], [820, 488], [940, 530], [1040, 548]], base: 552, depth: 0.85, rough: 0.2, rim: true, shade: false });
+  // aurora (animated, sits behind the cliffs because cliffs go to the front layer)
+  c.anims.push(aurora(c, { y: 20, bands: 3, animate: true }));
+  const wa = c.anims.length;
+  stat += water(c, { y: 552, glitter: true, ripples: 220, foam: false, sunX: 1010 });
+  const split = c.anims.length;
+  // cliffs framing both sides, dark with warm rim light
+  let front = '';
+  const cl = (pts, side) => {
+    let g = `<path d="${smooth(pts, 0.35)}L${pts[pts.length - 1][0]} 900L${pts[0][0]} 900Z" fill="#140f1c"/>`;
+    g += `<path d="${smooth(pts, 0.35)}" stroke="#ffb070" stroke-width="3" fill="none" opacity=".55"/>`;
+    let d = '';
+    for (let i = 0; i < 16; i++) { const x = pts[0][0] + r() * (pts[pts.length - 1][0] - pts[0][0]), y = yAt(pts, x) + 20 + r() * 300; d += `M${f0(x)} ${f0(y)}h${f0(20 + r() * 60)}`; }
+    g += `<path d="${d}" stroke="#3a2a3a" stroke-width="3" opacity=".6"/>`;
+    return g;
+  };
+  front += cl([[-30, 120], [80, 110], [180, 170], [250, 300], [300, 460], [360, 620], [420, 760], [470, 900]], -1);
+  front += forest(Object.assign(c, {}), { x0: 0, x1: 200, step: 16, hMin: 30, hMax: 54, depth: 0, color: '#120e18', twoTone: false, ground: x => 112 + Math.max(0, x - 80) * 0.5 });
+  front += cl([[1300, 900], [1360, 700], [1420, 520], [1480, 380], [1540, 300], [1630, 260]], 1);
+  // the dragon ship, sail set, oars out
+  const sh = longship(c, 700, 760, 1.55, { sail: 'set', oars: true, vane: true, sailCols: ['#a3302a', '#efe2c4'] });
+  front += `<g transform="translate(700 772) scale(1.55 -1.2)" opacity=".25">${sh.body}</g>`;
+  front += `<path d="M420 770q60 -10 130 4M860 778q80 6 160 -4" stroke="#ffd0a0" stroke-width="3" fill="none" opacity=".5"/>`;
+  c.anims.push(c.animate ? `<g class="wr-anim-ship" transform="${sh.tr}"><g><animateTransform attributeName="transform" type="rotate" values="-1.4 0 0;1 0 -20;-1.4 0 0" dur="5s" repeatCount="indefinite"/>${sh.body}</g></g>` : sh.svg);
+  c.anims.push(gullsAnim(c, 5, { y0: 280, h: 200 }));
+  front += vignette(c, 0.55);
+  return assemble(c, { stat, front, split }, o);
+}
+
+// ---------- sea scene (voyages, battles) ----------
+export function seaScene(o = {}) {
+  const weather = o.weather || 'clear', time = o.time || 'day';
+  const W = {
+    clear: {},
+    fog: { skyTop: '#9aa4aa', skyMid: '#c4c8c6', skyBot: '#d8d8d2', haze: '#d0d2ce', hazeK: 1, waterTop: '#a8b4b4', waterMid: '#6a7e82', waterBot: '#3a4c52', cloudLit: '#e8e8e4', cloudShade: '#b8bcbc', light: '#e8e8e4' },
+    rain: { skyTop: '#4a5664', skyMid: '#7a8692', skyBot: '#a8b0b4', haze: '#8a949a', waterTop: '#7a8a92', waterMid: '#3e525c', waterBot: '#1a2a32', cloudLit: '#a8b0b8', cloudShade: '#4e5864', light: '#c8ccd0' },
+    storm: { skyTop: '#151a24', skyMid: '#2e3644', skyBot: '#4a5260', haze: '#3a424e', waterTop: '#3a4a54', waterMid: '#1e2c36', waterBot: '#0a141a', cloudLit: '#5a6270', cloudShade: '#1e242e', light: '#8a929c', sun: '#c8d0dc' },
+  }[weather] || {};
+  if (time === 'night' && weather !== 'clear') Object.assign(W, { skyTop: '#05070e', skyMid: '#121822', skyBot: '#20283a', waterTop: '#1e2a3a', waterMid: '#0e1622', waterBot: '#04080e', cloudLit: '#3a4252', cloudShade: '#141a24', light: '#5a6280' });
+  if (time === 'dusk' && weather !== 'clear') Object.assign(W, { skyBot: weather === 'storm' ? '#5a4448' : '#a88a84', skyMid: weather === 'storm' ? '#3a3440' : '#6a6878' });
+  const c = makeCtx({ seed: 'sea-' + weather + time, time, season: o.season || 'summer', detail: o.detail || autoDetail(), sunX: 1150, animate: o.animate, pal: W });
+  stdDefs(c);
+  const p = c.pal, r = c.rng;
+  const hz = 340;
+  const heavy = weather === 'storm' || weather === 'rain';
+  let stat = sky(c, { clouds: weather === 'clear' ? 6 : weather === 'fog' ? 0 : 14, cloudBand: heavy ? [-20, 300] : [40, 260], cloudW: heavy ? 380 : 240, noSun: weather !== 'clear', noStars: weather !== 'clear' });
+  if (heavy) { // low scud band
+    for (let i = 0; i < 6; i++) stat += cloud(c, i * 300 + r() * 80, 300 + r() * 30, 340, true, 0.3);
+  }
+  stat += hills(c, { pts: [[1040, hz], [1120, hz - 26], [1220, hz - 34], [1330, hz - 12], [1380, hz]], base: hz + 2, depth: weather === 'fog' ? 0.95 : 0.8, color: '#4a5a4a', rim: !heavy });
+  // sea body with perspective wave bands
+  stat += `<rect x="-20" y="${hz}" width="1640" height="${900 - hz + 20}" fill="${vgrad(c, 'seab', [[0, mix(p.skyBot, p.waterTop, 0.5)], [0.25, p.waterTop], [0.6, p.waterMid], [1, p.waterBot]])}"/>`;
+  stat += `<path d="M-20 ${hz + 0.5}H1620" stroke="${mix(p.skyBot, '#ffffff', 0.3)}" stroke-width="1.5" opacity=".6"/>`;
+  if (weather === 'clear' && !p.night) {
+    let gd = '';
+    for (let i = 0; i < 70; i++) { const t = r(); const y = hz + 4 + t * t * 500; gd += `M${f0(c.sunX + (r() - 0.5) * (30 + t * 420))} ${f0(y)}h${f0(6 + r() * (10 + t * 50))}`; }
+    stat += `<path d="${gd}" stroke="${p.sun}" stroke-width="2" opacity=".6"/>`;
+  }
+  const rough = weather === 'storm' ? 2.3 : heavy ? 1.4 : weather === 'fog' ? 0.6 : 1;
+  // distant chop: short dashes, denser and finer near the horizon
+  let chopD = '', chopL = '';
+  for (let i = 0; i < 260; i++) {
+    const t = Math.pow(r(), 1.5), y = hz + 4 + t * 300, w = 6 + t * 40;
+    const x = r() * 1640 - 20;
+    if (r() < 0.55) chopD += `M${f0(x)} ${f0(y)}q${f0(w / 2)} ${f1(-2 - t * 5 * rough)} ${f0(w)} 0`; else chopL += `M${f0(x)} ${f0(y)}h${f0(w * 0.6)}`;
+  }
+  stat += `<path d="${chopD}" stroke="${mix(p.waterBot, '#000000', 0.15)}" stroke-width="1.6" fill="none" opacity=".45"/><path d="${chopL}" stroke="${p.night ? '#6a7a9a' : mix(p.waterTop, '#ffffff', 0.45)}" stroke-width="1.4" opacity=".5"/>`;
+  // swells: staggered painted waves, back to front, each with a dark back, lit face and a foam crest
+  const back = mix(p.waterBot, '#000000', 0.1), faceC = mix(p.waterMid, p.waterTop, 0.45), foam = p.night ? '#9aaac4' : '#f2f4f0';
+  const groups = [[], [], []];
+  for (let row = 0; row < 11; row++) {
+    const t = row / 10, y = hz + 40 + Math.pow(t, 1.6) * 560;
+    const w = (60 + t * 300) * (0.8 + rough * 0.2), h = (5 + t * 34) * rough;
+    let x = -w * r();
+    let dB = '', dF = '', dC = '', dL = '';
+    while (x < 1640 + w) {
+      const ww = w * (0.6 + r() * 0.8), hh = h * (0.6 + r() * 0.7), yy = y + (r() - 0.5) * 14 * (0.4 + t), lean = ww * 0.12;
+      const pk = [x + ww * 0.45 + lean, yy - hh];
+      dB += `M${f0(x)} ${f0(yy)}Q${f0(x + ww * 0.25)} ${f0(yy - hh * 0.55)} ${f0(pk[0])} ${f0(pk[1])}Q${f0(pk[0] + ww * 0.18)} ${f0(yy - hh * 0.7)} ${f0(x + ww)} ${f0(yy)}Z`;
+      dF += `M${f0(pk[0])} ${f0(pk[1])}Q${f0(pk[0] + ww * 0.18)} ${f0(yy - hh * 0.7)} ${f0(x + ww)} ${f0(yy)}L${f0(pk[0] + ww * 0.05)} ${f0(yy)}Z`;
+      dC += `M${f0(pk[0] - ww * 0.16)} ${f0(pk[1] + hh * 0.3)}Q${f0(pk[0] - ww * 0.04)} ${f0(pk[1] - hh * 0.06)} ${f0(pk[0] + ww * 0.12)} ${f0(pk[1] + hh * 0.2)}`;
+      if (rough > 1.2 || r() < 0.4) dL += `M${f0(pk[0] + ww * 0.08)} ${f0(pk[1] + hh * 0.45)}h${f0(ww * 0.12)}M${f0(pk[0] - ww * 0.02)} ${f0(pk[1] + hh * 0.7)}h${f0(ww * 0.08)}`;
+      x += ww * (0.55 + r() * 0.5);
+    }
+    const sw = f1(1.2 + t * 3.5);
+    groups[row % 3].push(`<path d="${dB}" fill="${back}" opacity="${f1(0.35 + t * 0.4)}"/><path d="${dF}" fill="${faceC}" opacity="${f1(0.3 + t * 0.35)}"/><path d="${dC}" stroke="${foam}" stroke-width="${sw}" fill="none" stroke-linecap="round" opacity="${f1(0.45 + t * 0.4)}"/><path d="${dL}" stroke="${foam}" stroke-width="${f1(sw * 0.6)}" stroke-linecap="round" opacity="${f1(0.3 + t * 0.3)}"/>`);
+  }
+  if (c.animate) {
+    groups.forEach((g, i) => c.anims.push(`<g class="wr-anim-wave">${g.join('')}<animateTransform attributeName="transform" type="translate" values="0 0;${f0((i - 1) * 14 * rough + 8)} ${f1(2 * rough)};0 0" dur="${f1(3.5 + i * 0.9 - (rough - 1))}s" repeatCount="indefinite"/></g>`));
+  } else stat += groups.map(g => g.join('')).join('');
+  const split = c.anims.length;
+  let front = '';
+  if (weather === 'fog') {
+    const fg = vgrad(c, 'fogb', [[0, '#e4e6e2', 0], [0.5, '#e4e6e2', 0.75], [1, '#e4e6e2', 0]]);
+    for (let i = 0; i < 4; i++) {
+      const y = 260 + i * 150, band = `<rect x="-200" y="${y}" width="2000" height="${120 + i * 30}" fill="${fg}" opacity="${f1(0.7 - i * 0.12)}"/>`;
+      if (c.animate) c.anims.push(`<g class="wr-anim-fog">${band}<animateTransform attributeName="transform" type="translate" values="0 0;${i % 2 ? -120 : 120} 0;0 0" dur="${18 + i * 5}s" repeatCount="indefinite"/></g>`);
+      else front += band;
+    }
+  }
+  if (heavy) c.anims.push(rainfall(c, weather === 'storm' ? 150 : 100, weather === 'storm' ? -0.4 : -0.15));
+  if (weather === 'storm') {
+    const bolt = `M1180 40l-30 110l26 -6l-40 120l24 -4l-50 130`;
+    const fl = c.animate
+      ? `<g class="wr-anim-lightning" pointer-events="none"><rect x="-20" y="-20" width="1640" height="940" fill="#dfe6ff" opacity="0"><animate attributeName="opacity" values="0;0;.55;0;.35;0;0" keyTimes="0;.62;.64;.67;.7;.74;1" dur="7s" repeatCount="indefinite"/></rect><path d="${bolt}" stroke="#f4f6ff" stroke-width="4" fill="none" opacity="0" stroke-linejoin="bevel"><animate attributeName="opacity" values="0;0;1;0;1;0;0" keyTimes="0;.62;.64;.67;.7;.74;1" dur="7s" repeatCount="indefinite"/></path></g>`
+      : '';
+    c.anims.push(fl);
+  }
+  if (weather === 'clear') c.anims.push(gullsAnim(c, 3, { y0: 100, h: 160 }));
+  front += vignette(c, heavy ? 0.6 : 0.45);
+  return assemble(c, { stat, front, split }, o);
+}
 
 export function portScene(portId, o = {}) {
   const def = PORT_DEFS[portId] || PORT_DEFS.ravnfjord;

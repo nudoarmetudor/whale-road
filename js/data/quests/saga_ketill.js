@@ -89,21 +89,21 @@ export const KETILL = [
     reward: {silver: 6000, renown: 8, unlockPorts: ['kaenugard'], unlockGoods: ['iron']},
   }),
   q(5, {
-    title: 'The Rapids',
+    title: 'The Gulf Blockade',
     giver: {port: 'kaenugard', building: 'hall', npc: 'slav_prince'}, npcName: 'Voivode Yaromir',
     requiresRenown: 20,
     offer: [
-      N('Grey-Keel. Bandits under grey sails tax the rapids. Our merchants turn back, and the Greeks go without our wax.'),
+      N('Grey-Keel. Bandits under grey sails blockade the Gulf. Our northern trade has stopped, and our furs rot in the sheds.'),
       H('Then let an old man clear the way. Slowly, but thoroughly.'),
-      N('Bring iron for our river forts as well.'),
+      N('Bring iron for our river forts as well. Then the south road to the Greeks is yours.'),
     ],
     steps: [
       {do: 'deliver', good: 'iron', qty: 20, port: 'kaenugard', building: 'hall', text: 'Deliver 20 iron to Voivode Yaromir.'},
-      {do: 'defeat', enemies: ['raider_snekkja', 'raider_snekkja'], at: {sea: 'dnieper_rapids'}, text: 'Clear the bandits from the Dnieper rapids.'},
+      {do: 'defeat', enemies: ['raider_snekkja', 'raider_snekkja'], at: {sea: 'gulf_finland'}, text: 'Break the bandits\' blockade in the Gulf.'},
     ],
     done: [
-      N('The rapids flow free! Svitozar wants to carve your face on a rock, but he\'s terrible at faces.'),
-      N('Take this skeid; we took it from the bandits. And sail on to Miklagarðr.'),
+      N('The Gulf is open! Svitozar the rapids-pilot wants to carve your face on a rock, but he\'s terrible at faces.'),
+      N('Take this skeid; we took it from the bandits. Svitozar will pilot you down the rapids to Miklagarðr.'),
       H('A skeid! I feel thirty again. My knees disagree.'),
     ],
     reward: {silver: 10000, renown: 10, ship: 'skeid', unlockPorts: ['miklagard'], unlockGoods: ['silk']},
@@ -140,11 +140,11 @@ export const KETILL = [
     offer: [
       N('Ketill! The whole west coast asks after you. The Tallyman\'s collectors are in Kaupang and Ravnfjord.'),
       H('He\'s going after my old harbours. Petty. He was always petty.'),
-      N('Bring wine for my hall, then deal with his collectors in the Skagerrak.'),
+      N('Bring wine for my hall, then deal with his collectors. They lurk in the southern Baltic, waiting for you.'),
     ],
     steps: [
       {do: 'deliver', good: 'wine', qty: 20, port: 'heidaby', building: 'hall', text: 'Deliver 20 wine to Auðun.'},
-      {do: 'defeat', enemies: ['collector_snekkja', 'collector_snekkja', 'raider_karvi'], at: {sea: 'skagerrak'}, text: 'Scatter the Tallyman\'s collectors in the Skagerrak.'},
+      {do: 'defeat', enemies: ['collector_snekkja', 'collector_snekkja', 'raider_karvi'], at: {sea: 'baltic_south'}, text: 'Scatter the Tallyman\'s collectors in the southern Baltic.'},
     ],
     done: [
       N('Collectors, collected. Kaupang, Ravnfjord and Hlaðir will open their harbours to you.'),

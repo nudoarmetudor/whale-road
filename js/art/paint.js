@@ -179,9 +179,9 @@ export function textureDefs(c) {
     + `<feDisplacementMap in="SourceGraphic" in2="w" scale="4" xChannelSelector="R" yChannelSelector="G" result="d"/>`
     + `<feColorMatrix in="w" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="m"/>`
     + `<feColorMatrix in="m" type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 0 1" result="mg"/>`
-    + `<feComposite in="d" in2="mg" operator="arithmetic" k1=".26" k2=".87" k3="0" k4="0" result="dm"/>`
+    + `<feComposite in="d" in2="mg" operator="arithmetic" k1=".18" k2=".91" k3="0" k4="0" result="dm"/>`
     + `<feTurbulence type="fractalNoise" baseFrequency=".8" numOctaves="1" seed="9" result="n"/>`
-    + `<feComposite in="dm" in2="n" operator="arithmetic" k1=".12" k2=".95" k3="0" k4="0" result="dn"/>`
+    + `<feComposite in="dm" in2="n" operator="arithmetic" k1=".08" k2=".965" k3="0" k4="0" result="dn"/>`
     + `<feColorMatrix in="dn" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0 1"/></filter>`);
 }
 export function staticOpen(c) { return c.detail === 'low' ? '<g class="wr-static">' : `<g class="wr-static" filter="${c.url('brush')}">`; }
@@ -272,35 +272,52 @@ export function sky(c, o = {}) {
       const L = 1300;
       d += `M${f0(sx)} ${f0(sy)}L${f0(sx + Math.cos(a - w) * L)} ${f0(sy + Math.sin(a - w) * L)}L${f0(sx + Math.cos(a + w) * L)} ${f0(sy + Math.sin(a + w) * L)}Z`;
     }
-    s += `<path d="${d}" fill="${rgrad(c, 'ray', [[0, p.sun, 0.22], [1, p.sun, 0]], `cx="${f0(sx)}" cy="${f0(sy)}" r="1100" gradientUnits="userSpaceOnUse"`)}"/>`;
+    s += `<path d="${d}" fill="${rgrad(c, 'ray', [[0, p.sun, o.rayOp ?? 0.16], [1, p.sun, 0]], `cx="${f0(sx)}" cy="${f0(sy)}" r="1100" gradientUnits="userSpaceOnUse"`)}"/>`;
   }
   const n = o.clouds ?? 6;
   for (let i = 0; i < n; i++) {
     const band = o.cloudBand || [60, 330];
     const x = (i + 0.2 + r() * 0.6) * 1600 / n + (r() - 0.5) * 60;
     const y = band[0] + r() * (band[1] - band[0]);
-    s += cloud(c, x, y, (o.cloudW || 260) * (0.6 + r() * 0.8), o.streaks || p.dusk);
+    const band2 = o.cloudBand || [60, 330];
+    const tdep = (y - band2[0]) / Math.max(1, band2[1] - band2[0]);
+    s += cloud(c, x, y, (o.cloudW || 220) * (0.55 + r() * 0.7) * (1.15 - tdep * 0.5), o.streaks || p.dusk, tdep * 0.6);
   }
   return s;
 }
 
-export function cloud(c, x, y, w, streak = false) {
-  const r = c.rng;
-  const h = streak ? w * 0.09 : w * 0.28;
-  const n = Math.max(4, Math.round(w / (streak ? 50 : 34)));
-  let shade = '', lit = '';
-  const sd = c.sunSide;
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1);
-    const px = x - w / 2 + t * w + (r() - 0.5) * 18;
-    const bump = Math.sin(t * Math.PI) * (0.6 + r() * 0.5);
-    const rx = (streak ? w / n * 1.6 : w / n * 1.1) * (0.8 + r() * 0.5);
-    const ry = streak ? h * (0.6 + r() * 0.6) : h * (0.45 + bump * 0.6);
-    const py = y - (streak ? 0 : bump * h * 0.6);
-    shade += `<ellipse cx="${f0(px)}" cy="${f0(py + ry * 0.35)}" rx="${f0(rx * 1.05)}" ry="${f0(ry)}"/>`;
-    lit += `<ellipse cx="${f0(px + sd * rx * 0.12)}" cy="${f0(py - ry * 0.18)}" rx="${f0(rx * 0.82)}" ry="${f0(ry * 0.78)}"/>`;
+export function cloud(c, x, y, w, streak = false, depth = 0) {
+  // gouache-like cumulus: flat shaded base, mid body, sunlit crowns. Solid fills, softened by the brush filter.
+  const r = c.rng, p = c.pal, sd = c.sunSide;
+  const hz = Math.min(0.75, depth);
+
+  const shade = mix(p.cloudShade, p.haze, hz), lit = mix(p.cloudLit, p.haze, hz * 0.6), midc = mix(shade, lit, 0.5);
+  if (streak) { // soft stratus: long feathered ellipses, lit on the side facing the sun (under-lit at dusk)
+    const h = w * 0.07, n = 3 + Math.floor(r() * 3), under = p.dusk || p.night;
+    let d1 = '', d2 = '';
+    for (let i = 0; i < n; i++) {
+      const cx = x + (r() - 0.5) * w * 0.6, cy = y + (r() - 0.5) * h * 2, rx = w * (0.25 + r() * 0.3), ry = h * (0.6 + r() * 0.6);
+      d1 += `<ellipse cx="${f0(cx)}" cy="${f0(cy)}" rx="${f0(rx)}" ry="${f0(ry)}"/>`;
+      d2 += `<ellipse cx="${f0(cx + sd * rx * 0.1)}" cy="${f0(cy + (under ? ry * 0.35 : -ry * 0.3))}" rx="${f0(rx * 0.75)}" ry="${f0(ry * 0.45)}"/>`;
+    }
+    return `<g fill="${c.url('puffS')}">${d1}</g><g fill="${c.url('puffL')}">${d2}</g>`;
   }
-  return `<g fill="${c.url('puffS')}">${shade}</g><g fill="${c.url('puffL')}">${lit}</g>`;
+  const h = w * (0.26 + r() * 0.12);
+  const n = Math.max(4, Math.round(w / 40));
+  const bumps = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const hump = Math.sin(t * Math.PI);
+    const rr = (w / n) * (0.62 + r() * 0.4) * (0.7 + hump * 0.6);
+    bumps.push([x - w / 2 + t * w + (r() - 0.5) * w / n * 0.5, y - hump * h * (0.5 + r() * 0.35), rr]);
+  }
+  // a couple of crowning towers
+  for (let k = 0; k < 2; k++) { const b = bumps[1 + Math.floor(r() * (n - 2))]; bumps.push([b[0] + (r() - 0.5) * 20, b[1] - b[2] * 0.7, b[2] * 0.75]); }
+  const circ = (list, dx, dy, k) => list.map(([cx, cy, rr]) => `<ellipse cx="${f0(cx + dx)}" cy="${f0(cy + dy)}" rx="${f0(rr * k * 1.32)}" ry="${f0(rr * k * 0.9)}"/>`).join('');
+  let s = `<g fill="${shade}">${circ(bumps, 0, 0, 1)}<rect x="${f0(x - w / 2)}" y="${f0(y - h * 0.25)}" width="${f0(w)}" height="${f0(h * 0.28)}" rx="${f0(h * 0.14)}"/></g>`;
+  s += `<g fill="${midc}">${circ(bumps, sd * 3, -h * 0.1, 0.84)}</g>`;
+  s += `<g fill="${lit}">${circ(bumps.filter((q, i) => i % 3 !== 2), sd * w * 0.025, -h * 0.2, 0.62)}</g>`;
+  return depth > 0.3 ? `<g opacity="${f1(1 - depth * 0.4)}">${s}</g>` : s;
 }
 
 export function aurora(c, o = {}) {
@@ -315,9 +332,11 @@ export function aurora(c, o = {}) {
     for (let i = 0; i <= 8; i++) pts.push([-50 + i * 212, y0 + Math.sin(i * 0.9 + b * 2 + r()) * 50]);
     const top = smooth(pts);
     const bot = smooth(pts.map(q => [q[0], q[1] + hh]).reverse(), 0.5, 'L');
-    const op = f1(0.55 + r() * 0.35);
-    const path = `<path d="${top}${bot}Z" fill="${b === 1 ? g2 : g}" opacity="${op}"/>`;
-    if (c.animate && o.animate && b === 0) c.anims.push(`<g class="wr-anim-aurora" opacity="${op}"><path d="${top}${bot}Z" fill="${g}"/><animate attributeName="opacity" values="${op};${f1(op * 0.4)};${op}" dur="9s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0 0;30 6;0 0" dur="14s" repeatCount="indefinite"/></g>`);
+    const op = f1(0.45 + r() * 0.3);
+    let rays = '';
+    for (let x = -40; x < 1640; x += 9 + r() * 14) { const yy = yAt(pts, x); rays += `M${f0(x)} ${f0(yy + r() * 20)}v${f0(hh * (0.35 + r() * 0.5))}`; }
+    const path = `<path d="${top}${bot}Z" fill="${b === 1 ? g2 : g}" opacity="${f1(op * 0.7)}"/><path d="${rays}" stroke="${b === 1 ? g2 : g}" stroke-width="4" opacity="${f1(op * 0.5)}"/>`;
+    if (c.animate && o.animate && b === 0) c.anims.push(`<g class="wr-anim-aurora" opacity="${op}">${path}<animate attributeName="opacity" values="${op};${f1(op * 0.4)};${op}" dur="9s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="0 0;30 6;0 0" dur="14s" repeatCount="indefinite"/></g>`);
     else s += path;
   }
   return s;

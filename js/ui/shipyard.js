@@ -23,7 +23,8 @@ export function openShipyard(port) {
           h('button.btn', {type: 'button', disabled: !all, onclick: () => done(call('fleet', 'repair', 'all'), `Fleet repaired for ${silver(all)}.`, 'hit')}, 'Repair all')));
         const list = h('ol.fleet-order', {'aria-label': 'Fleet order (front ship first)'});
         s.fleet.forEach((sh, i) => {
-          const st = D.ships?.[sh.type] || {};
+          const st = {...(D.ships?.[sh.type] || {})};
+          st.hull = read('fleet', 'maxHull', st.hull, i) || st.hull;
           const cost = read('fleet', 'repairCost', 0, i);
           const li = h('li.yard-ship', {'data-i': i},
             h('span.drag', {title: 'Drag to reorder', 'aria-hidden': 'true'}, '⋮⋮'),
@@ -98,7 +99,7 @@ export function openShipyard(port) {
         const have = a => s.fleet.reduce((x, sh) => x + (sh.ammo?.[a] || 0), 0);
         for (const a of ammo) {
           const info = D.ammo[a] || {};
-          const onlyAt = info.port || (a === 'greekfire' ? 'miklagard' : null);
+          const onlyAt = info.onlyAt || info.port || null;
           const here = !onlyAt || onlyAt === port.id;
           const price = read('fleet', 'ammoCost', 0, a);
           const st = stepper({value: 1, min: 1, max: () => Math.max(1, Math.floor(S().silver / (price || 1))), label: `Buy ${info.name || a}`});
@@ -112,13 +113,8 @@ export function openShipyard(port) {
 
   async function tradeIn(i, sh, v, st, api) {
     if (!(await confirmDlg(`Hand over ${sh.name} (worth ${silver(v)}) and take the ${st.name}?`, {yes: 'Trade'}))) return;
-    const r1 = call('fleet', 'sellShip', i);
-    if (r1?.ok === false) { result(r1); return; }
-    const r2 = call('fleet', 'buyShip', st.id || Object.keys(D.ships).find(k => D.ships[k] === st));
-    if (r2?.ok === false) { result(r2); toast('The old ship was sold; buy the new one when you have the silver.'); }
-    else { sfx('buy'); toast(`Traded ${sh.name} for a ${st.name}`, 'good'); }
-    flow.refreshHud();
-    api.refresh();
+    const type = st.id || Object.keys(D.ships).find(k => D.ships[k] === st);
+    if (result(call('fleet', 'buyShip', type, i), `Traded ${sh.name} for a ${st.name}`, 'buy')) { flow.refreshHud(); api.refresh(); }
   }
 }
 

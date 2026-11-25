@@ -170,7 +170,7 @@ function battle({enemies, weather, place = 'sea'}, root) {
         layer.remove();
         if (typeof off === 'function') off();
         if (!combatEmitted) {
-          if (r.result === 'win' && !r.lootApplied && (r.loot || r.silver)) {
+          if (r.result === 'win' && !r.applied && !r.lootApplied && (r.loot || r.silver)) {
             const t = call('fleet', 'takeLoot', r.loot || {}, r.silver || 0);
             if (t?.ok !== false && t?.taken) r = {...r, loot: t.taken, silver: t.silver ?? r.silver};
           }
@@ -193,17 +193,22 @@ async function afterBattle(r, why) {
     toast(bits.length ? `Victory! Taken: ${bits.join(', ')}` : 'Victory!', 'good');
     logLine(`Won a fight${bits.length ? ' and took ' + bits.join(', ') : ''}.`);
   } else if (r.result === 'fled') {
-    toast('You got away, bruised.'); logLine('Fled from a fight.');
+    toast(defeatLine('fled') || 'You got away, bruised.'); logLine('Fled from a fight.');
   } else {
     music('defeat'); sfx('sink');
     if (!fleetAlive()) return false;
-    toast(why === 'collectors' ? 'The collectors took their due from your hold.' : 'Beaten, but still afloat.', 'bad');
+    toast(defeatLine(why === 'collectors' ? 'collectors' : 'battle') || 'Beaten, but still afloat.', 'bad');
   }
   read('feats', 'check', null);
   refreshHud();
   await wait(800);
   music('sea');
   return fleetAlive();
+}
+function defeatLine(k) {
+  const t = X.lore?.DEFEAT?.[k];
+  const l = Array.isArray(t) ? t[Math.floor(Math.random() * t.length)] : t;
+  return typeof l === 'string' ? l : l?.text || '';
 }
 const fleetAlive = () => (S().fleet || []).some(s => (s.hull ?? 1) > 0);
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -271,7 +276,7 @@ async function checkEnd() {
 function gameOver() {
   recordScore();
   music('defeat');
-  endScreen({title: 'The sea keeps what it takes', text: 'Your last ship is gone. The skalds will make something heroic of it, eventually.', win: false});
+  endScreen({title: 'The sea keeps what it takes', text: defeatLine('sunk') || 'Your last ship is gone. The skalds will make something heroic of it, eventually.', win: false});
 }
 function endScreen({title, text, win}) {
   closeAllSheets();

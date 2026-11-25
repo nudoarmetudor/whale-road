@@ -59,10 +59,10 @@ export const SAEUNN = [
     offer: [
       N('A völva! Good. My cliffs crawl with crows the size of cows. They steal fish, sheep, and once a bishop\'s hat.'),
       H('Storm crows. They follow broken weather, and broken weather follows a broken net.'),
-      N('Drive them off the Pentland Firth, and bring walrus ivory. For my grandchildren\'s teething toys. Don\'t ask.'),
+      N('They hunt the sea-road east to Kaupang. Drive them off, and bring walrus ivory for my grandchildren. Don\'t ask.'),
     ],
     steps: [
-      {do: 'defeat', enemies: ['storm_crow', 'storm_crow'], at: {sea: 'pentland'}, text: 'Drive the storm crows from the Pentland Firth.'},
+      {do: 'defeat', enemies: ['storm_crow', 'storm_crow'], at: {sea: 'skagerrak'}, text: 'Drive the storm crows from the Skagerrak sea-road.'},
       {do: 'deliver', good: 'ivory', qty: 10, port: 'orkney', building: 'hall', text: 'Deliver 10 walrus ivory to Jarl Arnkell.'},
     ],
     done: [

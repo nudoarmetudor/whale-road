@@ -150,7 +150,9 @@ export function fleetSheet() {
   }});
 }
 export function shipCard(sh, extra) {
-  const st = D.ships?.[sh.type] || {};
+  const st = {...(D.ships?.[sh.type] || {})};
+  const i = (S().fleet || []).indexOf(sh);
+  if (i >= 0) st.hull = read('fleet', 'maxHull', st.hull, i) || st.hull;
   let art = '';
   try { art = A.shipSVG(sh.type, {w: 240, shields: true}); } catch { /* none */ }
   const arms = Object.entries(sh.arms || {}).filter(([, n]) => n).map(([a, n]) => `${n}× ${D.arms?.[a]?.name || cap(a)}`).join(', ') || 'No armaments';

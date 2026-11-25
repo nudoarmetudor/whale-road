@@ -171,9 +171,13 @@ button.row-main { min-height: var(--tap); }
 @keyframes bob { 50% { transform: translateY(3px); } }
 .dlg-skip { position: absolute; top: auto; bottom: calc(100% - 44px - 8px); right: calc(14px + var(--sa-r)); color: var(--parchment); background: rgba(0,0,0,.4); box-shadow: inset 0 0 0 2px rgba(201,154,46,.6); }
 .dlg { flex-wrap: nowrap; }
+.dlg.narration .dlg-portrait { display: none; }
+.dlg.narration .dlg-box { margin: 0 auto; padding: 12px 18px; }
+.dlg.narration .dlg-text { font-style: italic; text-align: center; }
 @media (orientation: portrait) and (max-width: 760px) {
-  .dlg { flex-direction: column; align-items: flex-start; }
+  .dlg { flex-direction: column; align-items: flex-start; justify-content: flex-end; }
   .dlg.right { flex-direction: column; align-items: flex-end; }
+  .dlg-box { flex: none; }
   .dlg-portrait { width: 120px; margin: 0 8px -18px; }
   .dlg-box, .dlg.right .dlg-box { margin: 0; width: 100%; padding: 14px 14px 12px; }
   .dlg.right .dlg-more { right: 22px; }
@@ -189,7 +193,7 @@ button.row-main { min-height: var(--tap); }
 @keyframes drift { from { transform: scale(1.04) translate(-1%, 0); } to { transform: scale(1.1) translate(1.5%, -1%); } }
 .title::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 30%, transparent 30%, rgba(10,8,5,.55)); pointer-events: none; }
 .title-ships { position: absolute; left: 0; right: 0; bottom: 0; height: 42%; z-index: 1; pointer-events: none; overflow: hidden; }
-.sea-ship { position: absolute; left: 0; bottom: calc((1 - var(--lane)) * 70%); width: 240px; transform-origin: bottom center;
+.sea-ship { position: absolute; left: 0; bottom: calc((1 - var(--lane)) * 34%); width: 240px; transform-origin: bottom center;
   animation: sail-ltr var(--dur) linear var(--delay) infinite; }
 .sea-ship svg { width: 100%; height: auto; animation: rock 4s ease-in-out infinite; transform-origin: 50% 80%; }
 .sea-ship.rtl { animation-name: sail-rtl; }
@@ -211,7 +215,7 @@ button.row-main { min-height: var(--tap); }
 @media (hover: hover) { .menu-item:hover { filter: brightness(1.15); } .btn:hover:not(:disabled) { filter: brightness(1.08); } }
 .profile-chip { min-height: var(--tap); display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 22px; padding: 4px 16px 4px 8px; color: var(--parchment); background: rgba(10,8,5,.55); box-shadow: inset 0 0 0 1px rgba(201,154,46,.6); }
 .title.watching .title-fg { opacity: 0; transform: translateY(20px); pointer-events: none; }
-.title.watching .title-ships { height: 60%; }
+.title.watching .title-ships { height: 50%; }
 .watch-back { position: absolute; inset: 0; z-index: 3; border: 0; background: transparent; color: rgba(239,226,196,.0); font-family: var(--f-title); display: flex; align-items: flex-end; justify-content: center; padding-bottom: calc(18px + var(--sa-b)); animation: hint-fade 5s forwards; }
 @keyframes hint-fade { 0%, 60% { color: rgba(239,226,196,.85); } 100% { color: rgba(239,226,196,0); } }
 @media (orientation: landscape) and (max-height: 500px) {
@@ -344,6 +348,7 @@ button.row-main { min-height: var(--tap); }
 
 /* portrait phone: two-row HUD, compact dock */
 @media (orientation: portrait) and (max-width: 760px) {
+  .stat .yr { display: none; }
   .hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-left: calc(6px + var(--sa-l)); padding-right: calc(6px + var(--sa-r)); }
   .stat { padding: 2px 6px 2px 2px; min-height: 36px; gap: 3px; }
   .stat .ico { width: 20px; height: 20px; }
@@ -555,3 +560,6 @@ button.row-main { min-height: var(--tap); }
   .sea-ship { display: none; }
   .title-bg { animation: none; transform: scale(1.06); }
 }
+.rows li.dim { opacity: .7; }
+.recipes .row-main small { display: block; }
+.guild-standing { display: grid; gap: 4px; margin-bottom: 6px; }
