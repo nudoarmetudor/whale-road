@@ -1526,7 +1526,7 @@ PORT_DEFS.island = {
   over: c => {
     // hot springs: steaming pools, one geyser
     let s = '';
-    for (const [x, y, w] of [[860, 678, 40], [1000, 690, 30], [1180, 668, 26]]) s += `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${w * 0.25}" fill="${c.col('#6ac0c8', 1)}"/><ellipse cx="${x}" cy="${y}" rx="${w * 1.15}" ry="${w * 0.32}" fill="none" stroke="${c.col('#d8d0b0', 1)}" stroke-width="3"/>`;
+    for (const [x, y, w] of [[860, 678, 40], [1000, 690, 30], [1180, 668, 26]]) s += `<ellipse cx="${x}" cy="${y}" rx="${w}" ry="${w * 0.25}" fill="${c.col('#6ac0c8', c.pal.night ? 0.5 : 1)}"/><ellipse cx="${x}" cy="${y}" rx="${w * 1.15}" ry="${w * 0.32}" fill="none" stroke="${c.col('#d8d0b0', 1)}" stroke-width="3"/>`;
     c.anims.push(steam(c, 860, 674, 1.2), steam(c, 1180, 664, 0.9), geyserAnim(c, 1000, 688, 1));
     return s;
   },

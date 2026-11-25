@@ -58,6 +58,11 @@ function raiders(marks) {
   return e;
 }
 
+/** No offering at any altar for 90 days (Saga mode only). */
+export function godsAngry() {
+  return S.mode === 'saga' && S.day - (S.flags.lastOffering ?? 1) > 90;
+}
+
 function beasts(north, winter) {
   if (winter && rand() < 0.3) return ['draugr_ship'];
   if (north) return rand() < 0.5 ? ['serpent'] : ['kraken'];
@@ -70,6 +75,8 @@ const TEXT = {
   calm: ['The wind dies. The crew rows, grumbles, and rows some more.', 'Flat calm. Somebody whistles for wind and gets told off.'],
   wreck: ['Barrels bob in the swell: flotsam from some luckless ship.', 'A wrecked hull on a skerry, still holding cargo.'],
   raid: ['Sails on the horizon, striped and hungry. Raiders!', 'A war-horn from behind the headland: raiders want your cargo.'],
+  wrath: ['The gods have waited long for an offering. Something answers for them from the deep.',
+    'No smoke has risen from your altar fires in months. The sea remembers.'],
   beast: ['Something vast moves under the hull.', 'The lookout goes pale and points. That is no whale.'],
   collectors: ['A sleek ship flies the moneylender\'s pennant. They have come to collect.'],
 };
@@ -116,8 +123,11 @@ export function planVoyage(to) {
   }
   const pRaid = clamp((0.05 + days * 0.01 + S.renown / 1500 + cargoValue() / 300000) * (1 + mod('raidChance')) * (S.easy ? 0.75 : 1), 0, 0.6);
   if (rand() < pRaid) events.push({day: at(), type: 'raid', enemies: raiders(marks), text: pick(TEXT.raid)});
-  const pBeast = 0.03 + (north ? 0.04 : 0) + (days > 10 ? 0.04 : 0);
-  if (rand() < pBeast) events.push({day: at(), type: 'beast', enemies: beasts(north, winter), text: pick(TEXT.beast)});
+  // Gods who have had no offering for 90 days send beasts after you (the genre's "angered gods").
+  const angry = godsAngry();
+  const pBeast = 0.03 + (north ? 0.04 : 0) + (days > 10 ? 0.04 : 0) + (angry ? 0.12 : 0);
+  if (rand() < pBeast) events.push({day: at(), type: 'beast', enemies: beasts(north, winter),
+    text: angry ? pick(TEXT.wrath) : pick(TEXT.beast)});
   if (rand() < 0.07) {
     const g = pick(S.unlockedGoods.filter((x) => GOODS[x] && GOODS[x].tier <= 3));
     events.push({day: at(), type: 'wreck', good: g, qty: randInt(3, 12), text: pick(TEXT.wreck)});

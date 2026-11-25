@@ -175,6 +175,7 @@ function openAltar(port) {
   return sheet({title: 'Altar', portrait: npc, greeting: rnd(['The gods are listening. They prefer it when you bring something.', 'Leave your gift on the stone. Not that stone. That one.']),
     cls: 'altar', build(body, api) {
       add(body, h('p.small', 'Give goods from your holds; the blessing is yours to call on in battle.'));
+      if (read('voyage', 'godsAngry', false)) add(body, h('p.small.warn', 'No offering has burned here for many months. The gods are restless, and the deep is listening. An offering at any altar calms them.'));
       for (const b of Object.keys(D.blessings || {})) {
         const B = D.blessings[b];
         const cost = read('altar', 'blessingCost', {good: B.good, qty: B.qty}, b);

@@ -1,6 +1,6 @@
 // Whale Road service worker: precaches the game so it plays offline, then serves
 // cache-first with a background refresh. Bump VERSION whenever files change.
-const VERSION = 'wr-v1';
+const VERSION = 'wr-v2';
 // Every file the game loads (regenerate when modules are added; missing ones are skipped).
 const FILES = [
   './', './index.html', './manifest.webmanifest', './icon.svg', './css/main.css', './js/art/mapart.js',

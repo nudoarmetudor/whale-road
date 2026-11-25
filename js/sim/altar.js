@@ -29,6 +29,7 @@ export function buyBlessing(b, qty = 1) {
   if (!S.cargo[c.good]) { delete S.cargo[c.good]; delete S.cargoPaid[c.good]; }
   S.blessings[b] = (S.blessings[b] || 0) + qty;
   S.stats.blessings += qty;
+  S.flags.lastOffering = S.day; // keeps the gods content (see voyage.js godsAngry)
   emit('cargo', S.cargo); emit('fleet', S.fleet);
   return ok({spent: {[c.good]: c.qty * qty}, have: S.blessings[b], quest: onSacrifice(b, qty, S.port)});
 }
