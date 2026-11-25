@@ -874,8 +874,11 @@ function land(c, pts, bottom, o = {}) {
   const p = c.pal, dep = o.depth ?? 0;
   const top = Math.min(...pts.map(q => q[1]));
   const gname = 'land' + (c._ld = (c._ld || 0) + 1);
-  const col = o.color || p.ground;
-  c.def(gname, `<linearGradient id="${c.id(gname)}" x1="0" y1="${f0(top)}" x2="0" y2="${f0(bottom)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.col(col, 1, dep)}"/><stop offset="1" stop-color="${c.col(o.color2 || p.groundDark, 0.85, dep)}"/></linearGradient>`);
+  // in winter a custom ground colour is snowed over too, unless the caller opts out
+  const snowy = k => (p.winter && o.snow !== false ? mix(k, '#e8edf2', 0.8) : k);
+  const col = o.color ? snowy(o.color) : p.ground;
+  const col2 = o.color2 ? snowy(o.color2) : p.groundDark;
+  c.def(gname, `<linearGradient id="${c.id(gname)}" x1="0" y1="${f0(top)}" x2="0" y2="${f0(bottom)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.col(col, 1, dep)}"/><stop offset="1" stop-color="${c.col(col2, 0.85, dep)}"/></linearGradient>`);
   const d = (o.smooth === false ? pts2d(pts) : smooth(pts, 0.4)) + `L${pts[pts.length - 1][0]} ${bottom}L${pts[0][0]} ${bottom}Z`;
   let s = P(d, c.url(gname));
   // grass strokes / texture
@@ -986,6 +989,10 @@ function rampart(c, pts, h, o = {}) { // earth bank with a palisade on top
   const top = smooth(pts, 0.4);
   const bot = smooth(pts.map(q => [q[0], q[1] + h]).reverse(), 0.4, 'L');
   let s = P(top + bot + 'Z', c.col(c.pal.winter ? '#dfe4ea' : '#6f7a3e', 0.85, dep));
+  if (o.strong) { // shadowed outer face and a lit crest, so the bank reads against the fields
+    s += P(smooth(pts.map(q => [q[0], q[1] + h * 0.45]), 0.4) + bot + 'Z', c.col(c.pal.winter ? '#b8c2ce' : '#4a5a2c', 0.8, dep), ' opacity=".8"');
+    s += `<path d="${top}" stroke="${c.pal.winter ? '#ffffff' : c.pal.sun}" stroke-width="3" fill="none" opacity=".4"/>`;
+  }
   s += P(top + smooth(pts.map(q => [q[0], q[1] + h * 0.35]).reverse(), 0.4, 'L') + 'Z', c.col(c.pal.winter ? '#f2f5f8' : '#87924c', 1, dep), ' opacity=".7"');
   if (o.palisade !== false) s += palisade(c, pts[0][0], pts[pts.length - 1][0], x => yAt(pts, x) + 3, o.ph || 22, { depth: dep, step: o.step || 7 });
   return s;
@@ -1308,6 +1315,7 @@ function buildPort(id, o, def) {
 }
 
 function autoDetail() {
+  try { if (typeof document !== 'undefined' && document.documentElement.classList.contains('low')) return 'low'; } catch (e) { /* ignore */ }
   try { if (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) return 'low'; } catch (e) { /* ignore */ }
   return 'high';
 }
@@ -1456,7 +1464,7 @@ PORT_DEFS.faereyjar = {
     s += waterfall(c, 1330, 196, 520, 7, 0.3);
     return s;
   },
-  land: c => land(c, [[300, 640], [480, 590], [700, 600], [920, 594], [1120, 570], [1330, 560]], 716, { bank: 12, color: '#6a8a3a' })
+  land: c => land(c, [[220, 718], [300, 660], [480, 592], [700, 600], [920, 594], [1120, 570], [1330, 562], [1430, 640], [1480, 718]], 716, { bank: 12, color: '#6a8a3a' })
     + groundDetail(c, { x0: 400, x1: 1300, y0: 600, y1: 700, fences: [[440, 560, 640]], rocks: [[1240, 690, 4, 1]] }),
   slots: c => rows([
     [588, 0.8, 0.05, [[560, 'high'], [820, 'edge'], [1060, 'high']]],
@@ -1674,6 +1682,25 @@ PORT_DEFS.rudaborg = {
 };
 
 // Heiðabýr: Danish market town inside its great semicircular rampart, by the Noor
+function rauk(c, x, y, w, h, o = {}) {
+  const dep = o.depth ?? 0, r = c.rng, sd = c.sunSide;
+  const col = c.pal.night ? '#6a6a72' : '#a49c8a';
+  const j = () => (r() - 0.5) * w * 0.12;
+  const L = [[x - w * 0.5, y], [x - w * 0.4 + j(), y - h * 0.14], [x - w * 0.3 + j(), y - h * 0.3], [x - w * 0.34 + j(), y - h * 0.46], [x - w * 0.26 + j(), y - h * 0.6], [x - w * 0.36 + j(), y - h * 0.76], [x - w * 0.3, y - h * 0.9], [x - w * 0.12, y - h * 0.97], [x + w * 0.02, y - h], [x + w * 0.2, y - h * 0.95], [x + w * 0.34, y - h * 0.84], [x + w * 0.3 + j(), y - h * 0.66], [x + w * 0.22 + j(), y - h * 0.5], [x + w * 0.32 + j(), y - h * 0.32], [x + w * 0.38 + j(), y - h * 0.15], [x + w * 0.52, y]];
+  let s = P(pts2d(L.map(q => [f0(q[0]), f0(q[1])])) + 'Z', c.col(col, 0.78, dep));
+  // lit flank on the sun side, cap highlight, horizontal bedding and a dark wave-cut notch
+  const lit = L.filter(q => (q[0] - x) * sd > -w * 0.05);
+  s += P(pts2d(lit.map(q => [f0(q[0]), f0(q[1])])) + `L${f0(x + sd * w * 0.05)} ${y}Z`, c.col(col, 1.18, dep), ' opacity=".65"');
+  s += P(`M${f0(x - w * 0.3)} ${f0(y - h * 0.9)}L${f0(x - w * 0.12)} ${f0(y - h * 0.97)}L${f0(x + w * 0.02)} ${f0(y - h)}L${f0(x + w * 0.2)} ${f0(y - h * 0.95)}L${f0(x + w * 0.1)} ${f0(y - h * 0.9)}Z`, c.col('#e8e2d0', 1, dep), ' opacity=".5"');
+  let st = '';
+  for (let i = 1; i < 9; i++) { const yy = y - h * i / 9; st += `M${f0(x - w * 0.3)} ${f0(yy)}q${f0(w * 0.3)} ${f1(r() * 4 - 2)} ${f0(w * (0.4 + r() * 0.2))} 0`; }
+  s += `<path d="${st}" stroke="${c.col(col, 0.5, dep)}" stroke-width="2" opacity=".45" fill="none"/>`;
+  s += P(`M${f0(x - w * 0.44)} ${f0(y)}Q${f0(x)} ${f0(y - h * 0.1)} ${f0(x + w * 0.48)} ${f0(y)}Z`, c.col('#3a3a34', 0.8, dep), ' opacity=".6"');
+  // lichen
+  for (let i = 0; i < 5; i++) s += `<ellipse cx="${f0(x + (r() - 0.5) * w * 0.5)}" cy="${f0(y - h * (0.3 + r() * 0.6))}" rx="${f0(4 + r() * 6)}" ry="${f0(2 + r() * 3)}" fill="${c.col('#7a8a5a', 0.9, dep)}" opacity=".5"/>`;
+  s += `<path d="M${f0(x - w / 2 - 10)} ${y}h${f0(w + 20)}" stroke="#fff" stroke-width="3" opacity=".5"/>`;
+  return s;
+}
 PORT_DEFS.heidaby = {
   landmark: { x: 1480, y: 548, s: 0.6, dep: 0.1 },
   culture: 'dane', sunX: { day: 1240, dusk: 1100, night: 1200 },
@@ -1685,9 +1712,11 @@ PORT_DEFS.heidaby = {
     return s;
   },
   land: c => land(c, [[-30, 520], [400, 510], [800, 516], [1200, 508], [1630, 514]], 712, { bank: 8 })
-    + rampart(c, [[-30, 600], [120, 520], [400, 488], [800, 480], [1200, 486], [1480, 516], [1630, 590]], 44, { ph: 18 })
+    + rampart(c, [[-30, 590], [120, 512], [400, 478], [800, 470], [1200, 476], [1480, 506], [1630, 580]], 62, { ph: 18, strong: true })
     + groundDetail(c, { x0: 0, x1: 1600, y0: 560, y1: 700, paths: [[[60, 700], [420, 640], [800, 650], [1180, 620], [1540, 640]]] })
-    + `<path d="${smooth([[760, 540], [800, 600], [760, 660], [820, 714]], 0.5)}" stroke="${c.col(c.pal.waterMid, 1)}" stroke-width="12" fill="none"/>`,
+    + (() => { const br = smooth([[770, 532], [800, 580], [776, 630], [806, 676], [800, 714]], 0.5); const p = c.pal;
+      return `<path d="${br}" stroke="${c.col(p.groundDark, 0.8)}" stroke-width="22" fill="none" stroke-linecap="round"/><path d="${br}" stroke="${c.col(mix(p.waterMid, p.groundDark, 0.35), 1)}" stroke-width="14" fill="none" stroke-linecap="round"/><path d="${br}" stroke="${c.col(p.waterTop, 1)}" stroke-width="3" fill="none" opacity=".5" transform="translate(-2 0)"/>`
+        + `<path d="M786 640h36" stroke="${c.col('#5a4030', 0.9)}" stroke-width="7"/><path d="M788 636v10M820 636v10" stroke="${c.col('#3a2a20', 0.9)}" stroke-width="3"/>`; })(),
   slots: c => rows([
     [556, 0.8, 0.04, [[260, 'high'], [520, 'edge'], [1040, 'high'], [1300, 'edge']]],
     [612, 0.9, 0, [[140, 'center'], [400, 'center'], [660, 'center'], [960, 'center'], [1200, 'center'], [1440, 'center']]],
@@ -1791,7 +1820,7 @@ PORT_DEFS.gotland = {
   ]),
   water: (c, refl) => water(c, { y: 712, reflect: refl, reflOp: 0.35 }),
   front: c => {
-    let s = seaStack(c, 120, 860, 90, 230, { col: '#9a9282', grass: false, depth: 0 }) + seaStack(c, 230, 840, 60, 150, { col: '#a09886', grass: false, depth: 0 }) + seaStack(c, 1500, 870, 110, 260, { col: '#9a9282', grass: false, depth: 0 });
+    let s = rauk(c, 120, 862, 100, 240) + rauk(c, 236, 842, 64, 150) + rauk(c, 1500, 872, 120, 270);
     const m = mooredShip(c, 800, 830, 0.85, { sail: 'furled', sailCols: ['#2a5a8a', '#efe2c4'] }); s += m.stat; c.anims.push(m.anim);
     s += boat(c, 1100, 780, 1, { man: true }) + boat(c, 480, 770, 0.9);
     return s;

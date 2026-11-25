@@ -63,9 +63,10 @@ export const HEROES = [
     bio: 'A newcomer to Ravnfjord with a borrowed knarr and big plans. Nobody on the Whale Road knows your name yet. Give it a few voyages.',
     talent: {id: 'shieldwall', name: 'Shield Wall', desc: 'Your fleet locks shields: it takes 50% less damage for 10 seconds.'},
     startPort: 'ravnfjord', startShip: 'knarr', startSilver: 2000, startDebt: 0, portrait: 'custom',
-    // The custom hero has no saga of its own (see docs/STORY.md): it is a Free Trade face.
-    // These start sets apply only if the lead decides to let it play a saga.
-    startPorts: ['ravnfjord', 'kaupang', 'hladir', 'heidaby'], startGoods: SAGA_START_GOODS,
+    // The custom hero has no saga of its own. In Saga mode it plays an open world: every port but
+    // the raider fortress, every good but hacksilver, and the shared side tasks (decided by the lead).
+    get startPorts() { return ALL_PORTS.filter((p) => p !== 'jomsborg'); },
+    get startGoods() { return ALL_GOODS.filter((g) => g !== 'hacksilver'); },
   },
 ];
 

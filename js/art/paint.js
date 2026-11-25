@@ -281,7 +281,7 @@ export function sky(c, o = {}) {
     const y = band[0] + r() * (band[1] - band[0]);
     const band2 = o.cloudBand || [60, 330];
     const tdep = (y - band2[0]) / Math.max(1, band2[1] - band2[0]);
-    s += cloud(c, x, y, (o.cloudW || 220) * (0.55 + r() * 0.7) * (1.15 - tdep * 0.5), o.streaks || p.dusk, tdep * 0.6);
+    s += cloud(c, x, y, (o.cloudW || 220) * (0.55 + r() * 0.7) * (1.15 - tdep * 0.5) * (p.winter && !o.streaks ? 1.25 : 1), o.streaks || p.dusk || p.winter, tdep * 0.6);
   }
   return s;
 }
@@ -414,7 +414,8 @@ export function range(c, o) {
 // smooth rolling hills: o.pts control points, fill gradient from lit to dark
 export function hills(c, o) {
   const p = c.pal;
-  const base = o.base ?? 900, depth = o.depth ?? 0.3, color = o.color || p.ground;
+  const base = o.base ?? 900, depth = o.depth ?? 0.3;
+  const color = o.color ? (p.winter && o.snow !== false ? mix(o.color, '#e6ebf1', 0.75) : o.color) : p.ground;
   const top = Math.min(...o.pts.map(q => q[1]));
   const gname = 'hg' + (c._hg = (c._hg || 0) + 1);
   c.def(gname, `<linearGradient id="${c.id(gname)}" x1="0" y1="${f0(top)}" x2="0" y2="${f0(base)}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c.col(color, 1, depth)}"/><stop offset="1" stop-color="${c.col(color, 0.7, depth)}"/></linearGradient>`);
@@ -425,18 +426,31 @@ export function hills(c, o) {
   return s;
 }
 
+// compact polyline: absolute start, then relative steps between rounded points (no drift)
+export function relPoly(pts, dec = 0) {
+  const k = dec ? 10 : 1, q = v => Math.round(v * k);
+  let px = q(pts[0][0]), py = q(pts[0][1]);
+  let d = `M${px / k} ${py / k}l`;
+  const parts = [];
+  for (let i = 1; i < pts.length; i++) {
+    const x = q(pts[i][0]), y = q(pts[i][1]);
+    parts.push(`${(x - px) / k} ${(y - py) / k}`); px = x; py = y;
+  }
+  return d + parts.join(' ').replace(/ -/g, '-') + 'z';
+}
 export function spruce(x, y, h, w = h * 0.36) {
-  // jagged two-sided silhouette as a path; returns [left, right] halves for two-tone shading
+  // jagged silhouette; returns [left half, right half, whole outline] as compact paths
   const k = Math.max(2, Math.min(6, Math.round(h / 11)));
-  const f1 = h < 40 ? f0 : f1_;
-  let L = `M${f1(x)} ${f1(y - h)}`, R = L;
+  const dec = h < 40 ? 0 : 1;
+  const Lp = [[x, y - h]], Rp = [[x, y - h]];
   for (let i = 1; i <= k; i++) {
     const t = i / k, yy = y - h + h * t * 0.92, ww = w / 2 * (0.25 + t * 0.75);
-    L += `L${f1(x - ww)} ${f1(yy)}L${f1(x - ww * 0.45)} ${f1(yy - h / k * 0.25)}`;
-    R += `L${f1(x + ww)} ${f1(yy)}L${f1(x + ww * 0.45)} ${f1(yy - h / k * 0.25)}`;
+    Lp.push([x - ww, yy], [x - ww * 0.45, yy - h / k * 0.25]);
+    Rp.push([x + ww, yy], [x + ww * 0.45, yy - h / k * 0.25]);
   }
-  L += `L${f1(x)} ${f1(y)}Z`; R += `L${f1(x)} ${f1(y)}Z`;
-  return [L, R];
+  Lp.push([x, y]); Rp.push([x, y]);
+  const full = Lp.slice(0, -1).concat([[x, y]], Rp.slice(1, -1).reverse());
+  return [relPoly(Lp, dec), relPoly(Rp, dec), relPoly(full, dec)];
 }
 
 // a row of conifers along a ground function; far = single tone merged path
@@ -449,14 +463,14 @@ export function forest(c, o) {
     const gy = o.ground(x) + (o.sink ?? 4);
     const h = o.hMin + r() * (o.hMax - o.hMin);
     if (o.kind === 'birch' || (o.kind === 'mixed' && r() < 0.35)) {
-      const rr = h * 0.28;
-      dark += `M${f1(x - 1)} ${f1(gy)}h2v${f1(-h * 0.5)}h-2zM${f1(x - rr)} ${f1(gy - h * 0.6)}a${f1(rr)} ${f1(rr * 1.2)} 0 1 0 ${f1(rr * 2)} 0a${f1(rr)} ${f1(rr * 1.2)} 0 1 0 ${f1(-rr * 2)} 0z`;
-      light += `M${f1(x + c.sunSide * rr * 0.2 - rr * 0.6)} ${f1(gy - h * 0.68)}a${f1(rr * 0.6)} ${f1(rr * 0.75)} 0 1 0 ${f1(rr * 1.2)} 0a${f1(rr * 0.6)} ${f1(rr * 0.75)} 0 1 0 ${f1(-rr * 1.2)} 0z`;
+      const rr = h * 0.28, g = h < 70 ? f0 : f1;
+      dark += `M${g(x - 1)} ${g(gy)}h2v${g(-h * 0.5)}h-2zM${g(x - rr)} ${g(gy - h * 0.6)}a${g(rr)} ${g(rr * 1.2)} 0 1 0 ${g(rr * 2)} 0a${g(rr)} ${g(rr * 1.2)} 0 1 0 ${g(-rr * 2)} 0z`;
+      if (o.twoTone !== false || h > 30) light += `M${g(x + c.sunSide * rr * 0.2 - rr * 0.6)} ${g(gy - h * 0.68)}a${g(rr * 0.6)} ${g(rr * 0.75)} 0 1 0 ${g(rr * 1.2)} 0a${g(rr * 0.6)} ${g(rr * 0.75)} 0 1 0 ${g(-rr * 1.2)} 0z`;
     } else {
-      const [Lh, Rh] = spruce(x, gy, h, h * (o.wide || 0.38));
-      dark += Lh + Rh;
+      const [Lh, Rh, Fh] = spruce(x, gy, h, h * (o.wide || 0.38));
+      dark += Fh;
       if (o.twoTone !== false) light += c.sunSide > 0 ? Rh : Lh;
-      if (p.winter) { const [a, b] = spruce(x, gy - h * 0.25, h * 0.6, h * 0.3); snow += a; }
+      if (p.winter) snow += spruce(x, gy - h * 0.25, h * 0.6, h * 0.3)[2];
     }
   }
   let s = `<path d="${dark}" fill="${c.col(base, 0.7, depth)}"/>`;
@@ -561,7 +575,7 @@ export function sea(c, y0, y1, o = {}) {
 export function smokeAnim(c, x, y, s = 1, o = {}) {
   const col = o.color || (c.pal.night ? '#6a7090' : c.pal.dusk ? '#c8a4a0' : '#e4e2de');
   if (!c.animate) return `<g opacity=".3" fill="${col}"><circle cx="${f0(x)}" cy="${f0(y - 10 * s)}" r="${f1(6 * s)}"/><circle cx="${f0(x + 6 * s)}" cy="${f0(y - 30 * s)}" r="${f1(10 * s)}"/></g>`;
-  const v = (c._smk = (c._smk || 0) + 1) % 3;
+  const v = (c._smk = (c._smk || 0) + 1) % 2;
   const key = 'smk' + v + col.slice(1) + (o.drift ?? 40) + (o.dur || 0);
   const gid = 'sg' + col.slice(1);
   c.def(gid, `<radialGradient id="${c.id(gid)}"><stop offset="0" stop-color="${col}" stop-opacity=".75"/><stop offset=".6" stop-color="${col}" stop-opacity=".4"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>`);
@@ -609,11 +623,15 @@ export function gullsAnim(c, n = 4, o = {}) {
 export function snowfall(c, n = 70) {
   if (!c.animate) return '';
   const r = c.rng;
+  // three depth layers; each is one path of round dots tiled twice vertically, scrolled one tile per loop
+  const layers = [[1.8, 0.55, 16, 30], [3, 0.75, 11, 50], [4.6, 0.9, 7.5, 70]];
   let s = '';
-  for (let i = 0; i < n; i++) {
-    const x = r() * 1600, rr = f1(1 + r() * 2.4), dur = f1(7 + r() * 9), dx = f0((r() - 0.3) * 80);
-    s += `<circle cx="${f0(x)}" cy="-10" r="${rr}" fill="#fff" opacity="${f1(0.5 + r() * 0.5)}"><animateTransform attributeName="transform" type="translate" values="0 0;${dx} 920" dur="${dur}s" begin="${f1(-r() * dur)}s" repeatCount="indefinite"/></circle>`;
-  }
+  layers.forEach(([w, op, dur, dx], li) => {
+    let d = '';
+    const m = Math.round(n * (li === 2 ? 0.2 : 0.4));
+    for (let i = 0; i < m; i++) { const x = f0(r() * 1700 - 60), y = f0(r() * 900); d += `M${x} ${y}h0M${x} ${y - 900}h0`; }
+    s += `<path d="${d}" stroke="#fff" stroke-width="${w}" stroke-linecap="round" opacity="${op}"><animateTransform attributeName="transform" type="translate" values="0 0;${dx} 900" dur="${dur}s" repeatCount="indefinite"/></path>`;
+  });
   return `<g class="wr-anim-snow" pointer-events="none">${s}</g>`;
 }
 

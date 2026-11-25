@@ -71,7 +71,8 @@ const sellMult = () => SELL_FACTOR * (1 + mod('sellPrice'));
 /** Does this town sell (offer to you) this good? */
 export function sellsHere(port, good) {
   const P = PORTS[port];
-  return P.produces.includes(good) || (P.trades || []).includes(good) || (S.stocked[port] || []).includes(good);
+  return P.produces.includes(good) || (P.trades || []).includes(good) || (S.stocked[port] || []).includes(good)
+    || !!(S.flags && S.flags[`sells_${port}_${good}`]); // set by side-task rewards
 }
 const isContraband = (port, good) => PORTS[port].contraband.includes(good);
 const known = (good) => S.unlockedGoods.includes(good);
